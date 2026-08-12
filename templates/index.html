@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>VenueBite</title>
+</head>
+
+<body>
+
+    <h1>Welcome to VenueBite!</h1>
+
+    <p>Find the perfect location for your restaurant.</p>
+
+    <h2>Restaurant Location</h2>
+
+    <form method="GET">
+        <label for="location">
+            Where do you want to open your restaurant?
+        </label>
+
+        <input
+            type="text"
+            id="location"
+            name="location"
+        >
+
+        <button type="submit">Analyze Location</button>
+    </form>
+
+    {% if location %}
+        <h2>Location Analysis</h2>
+
+        <p>You entered: <strong>{{ location }}</strong></p>
+
+        <p>
+            {{ location }} is a great place to explore
+            for your restaurant idea!
+        </p>
+
+        <p>Population: {{ population_score }}</p>
+        <p>Income: {{ income_score }}</p>
+        <p>Rent: {{ rent_score }}</p>
+        <p>Competition: {{ competition_score }}</p>
+    {% endif %}
+
+</body>
+</html>
