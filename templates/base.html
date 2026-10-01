@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="VenueBite restaurant location analysis workspace.">
+    <title>{% block title %}Analyze a Location{% endblock %} | VenueBite</title>
+    <link rel="icon" href="{{ url_for('static', filename='icons/map-pin.svg') }}" type="image/svg+xml">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script src="{{ url_for('static', filename='js/main.js') }}" defer></script>
+</head>
+<body>
+    {% from '_icons.html' import icon with context %}
+    <a class="skip-link" href="#main">Skip to analysis</a>
+    <header class="app-header">
+        <a class="brand" href="{{ url_for('main.home') }}" aria-label="VenueBite home">
+            <span class="brand-symbol">{{ icon('map-pin', 'brand-icon') }}</span>
+            VenueBite<span class="brand-period">.</span>
+        </a>
+        <nav class="main-nav" aria-label="Main navigation">
+            <a class="nav-item active" href="{{ url_for('main.home') }}" aria-current="page">
+                {{ icon('scan-search') }}<span>Analyze</span>
+            </a>
+            <span class="nav-soon" tabindex="0" aria-label="Compare, coming soon">
+                {{ icon('git-compare-arrows') }}<span>Compare</span>
+                <span class="tooltip" role="tooltip">Coming soon</span>
+            </span>
+            <span class="nav-soon" tabindex="0" aria-label="Saved Locations, coming soon">
+                {{ icon('bookmark') }}<span>Saved Locations</span>
+                <span class="tooltip" role="tooltip">Coming soon</span>
+            </span>
+            <span class="nav-soon" tabindex="0" aria-label="Find an Area, coming soon">
+                {{ icon('compass') }}<span>Find an Area</span>
+                <span class="tooltip" role="tooltip">Coming soon</span>
+            </span>
+        </nav>
+        <span class="header-status"><span class="status-dot"></span>Demo workspace</span>
+    </header>
+
+    <main id="main" class="workspace">
+        <div class="page-heading">
+            <div>
+                <p class="eyebrow">LOCATION INTELLIGENCE</p>
+                <h1>Location analysis</h1>
+            </div>
+            <span class="version-tag">MVP / 01</span>
+        </div>
+        {% include '_search_form.html' %}
+        {% if page_error %}
+        <div class="error-banner" role="alert">{{ icon('circle-alert') }}<p>{{ page_error }}</p></div>
+        {% endif %}
+        {% block content %}{% endblock %}
+    </main>
+    <footer class="app-footer">
+        <span>VenueBite <span class="footer-divider">/</span> Location intelligence</span>
+        <span>Demo model. Not a guarantee of business success.</span>
+    </footer>
+</body>
+</html>

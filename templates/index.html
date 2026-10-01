@@ -1,48 +1,34 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>VenueBite</title>
-</head>
+{% extends 'base.html' %}
+{% block content %}
+<div class="demo-notice">
+    {{ icon('flask-conical') }}
+    <p><strong>Demo data only.</strong> All searches use the same sample dataset. No verified location or concept data.</p>
+</div>
 
-<body>
+<div class="analysis-grid empty-workspace">
+    <section class="location-section" aria-labelledby="location-heading">
+        <div class="section-heading"><h2 id="location-heading">Location context</h2><span class="small-label">LIVE MAP PENDING</span></div>
+        <div class="map-placeholder empty-map">
+            <span class="map-symbol">{{ icon('map', 'large-icon') }}</span>
+            <h3>No location selected</h3>
+            <span class="map-status">{{ icon('circle-dashed') }}Live map data will be added later</span>
+        </div>
+    </section>
 
-    <h1>Welcome to VenueBite!</h1>
-
-    <p>Find the perfect location for your restaurant.</p>
-
-    <h2>Restaurant Location</h2>
-
-    <form method="GET">
-        <label for="location">
-            Where do you want to open your restaurant?
-        </label>
-
-        <input
-            type="text"
-            id="location"
-            name="location"
-        >
-
-        <button type="submit">Analyze Location</button>
-    </form>
-
-    {% if location %}
-        <h2>Location Analysis</h2>
-
-        <p>You entered: <strong>{{ location }}</strong></p>
-
-        <p>
-            {{ location }} is a great place to explore
-            for your restaurant idea!
-        </p>
-
-        <p>Population: {{ population_score }}</p>
-        <p>Income: {{ income_score }}</p>
-        <p>Rent: {{ rent_score }}</p>
-        <p>Competition: {{ competition_score }}</p>
-        <p><strong>Overall Location Score: {{ location_score }}</strong></p>
-        <p><em>This is a practice score based on fake data.</em></p>
-    {% endif %}
-
-</body>
-</html>
+    <section class="empty-score" aria-labelledby="empty-score-heading">
+        <p class="eyebrow">VENUEBITE OPPORTUNITY SCORE</p>
+        <h2 id="empty-score-heading">Awaiting analysis</h2>
+        <div class="score-value muted-score">--<span>/ 100</span></div>
+        <div class="empty-factor-list" aria-label="Pending factors">
+            {% for label in ['Population', 'Income', 'Rent', 'Competition'] %}
+            <div><span>{{ label }}</span><span class="skeleton-line"></span><span>--</span></div>
+            {% endfor %}
+        </div>
+    </section>
+</div>
+<section class="empty-overview" aria-label="Pending analysis sections">
+    {% for name, icon_name in [('Area insights', 'chart-no-axes-combined'), ('Nearby competition', 'store'), ('Strengths & risks', 'list-checks')] %}
+    <div>{{ icon(icon_name) }}<h2>{{ name }}</h2><span class="small-label">PENDING</span></div>
+    {% endfor %}
+</section>
+{% endblock %}

@@ -1,0 +1,3 @@
+{% macro icon(name, extra_class='') -%}
+<img class="icon {{ extra_class }}" src="{{ url_for('static', filename='icons/' ~ name ~ '.svg') }}" alt="" width="20" height="20" aria-hidden="true">
+{%- endmacro %}

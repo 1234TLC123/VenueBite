@@ -1,0 +1,101 @@
+{% extends 'base.html' %}
+{% block title %}{{ report.data.location }}{% endblock %}
+{% block content %}
+{% if report.data.is_demo %}
+<div class="demo-notice">
+    {{ icon('flask-conical') }}
+    <p><strong>Demo data only.</strong> Scores, metrics, restaurants, and distances are fictional. All searches use the same sample dataset.</p>
+</div>
+{% endif %}
+
+<div class="report-heading">
+    <div class="report-title">
+        {{ icon('map-pin') }}
+        <div><h2>{{ report.data.location }}</h2><p>{{ report.data.concept }}</p></div>
+    </div>
+    <span class="data-badge">{{ report.data.source_label }}</span>
+</div>
+
+<div class="analysis-grid">
+    <section class="location-section" aria-labelledby="location-heading">
+        <div class="section-heading"><h2 id="location-heading">Location context</h2><span class="small-label">LIVE MAP PENDING</span></div>
+        <div class="map-placeholder">
+            <span class="map-symbol">{{ icon('map', 'large-icon') }}</span>
+            <h3>{{ report.data.location }}</h3>
+            <p>{{ report.data.concept }}</p>
+            <span class="map-status">{{ icon('circle-dashed') }}Live map data will be added later</span>
+        </div>
+        <div class="location-metadata"><span>{{ icon('map-pin') }}Submitted location</span><strong>{{ report.data.location }}</strong></div>
+        <div class="location-metadata"><span>{{ icon('utensils') }}Restaurant concept</span><strong>{{ report.data.concept }}</strong></div>
+    </section>
+
+    <section class="score-section" aria-labelledby="score-heading">
+        <div class="section-heading"><h2 id="score-heading">Opportunity score</h2><span class="small-label">{{ report.data.source_label }}</span></div>
+        <div class="score-summary">
+            <div class="score-value">{{ '%.1f'|format(report.score.overall_score) }}<span>/ 100</span></div>
+            <div class="score-classification">
+                <span class="classification {{ report.score.classification_key }}">{{ report.score.classification }}</span>
+                <p>Weighted opportunity model<br>Not a prediction of business success</p>
+            </div>
+        </div>
+        <div class="factor-grid">
+            {% for factor in report.score.factors %}
+            <article class="factor-card {{ factor.signal }}">
+                <div class="factor-header"><h3>{{ icon(factor.icon) }}{{ factor.label }}</h3><span>{{ factor.weight_percent }}% weight</span></div>
+                <div class="factor-value">{{ '%g'|format(factor.score) }}<span>/ 100</span></div>
+                <meter min="0" max="100" value="{{ factor.score }}" aria-label="{{ factor.label }} score">{{ factor.score }}</meter>
+                <p>{{ factor.description }}</p>
+            </article>
+            {% endfor %}
+        </div>
+        <details class="model-details">
+            <summary>{{ icon('info') }}Scoring assumptions</summary>
+            <p>Factor weights: {% for factor in report.score.factors %}{{ factor.label }} {{ factor.weight_percent }}%{% if not loop.last %}, {% else %}.{% endif %}{% endfor %} Higher factor scores always mean better opportunity. Strengths start at 75; risks are below 65. Overall classifications: strong at 80+, promising at 65+, mixed at 50+, and challenging below 50. These MVP thresholds and weights are not scientifically validated.</p>
+        </details>
+    </section>
+</div>
+
+<section class="insights-section" aria-labelledby="insights-heading">
+    <div class="section-heading"><h2 id="insights-heading">Area insights</h2><span class="data-badge">{{ report.data.source_label }}</span></div>
+    <div class="metrics-grid">
+        {% for insight in report.data.area_insights %}
+        <article class="metric">
+            <div class="metric-label">{{ icon(insight.icon) }}<h3>{{ insight.label }}</h3></div>
+            <strong>{{ insight.value }}</strong><p>{{ insight.detail }}</p>
+        </article>
+        {% endfor %}
+    </div>
+</section>
+
+<div class="lower-grid">
+    <section class="competition-section" aria-labelledby="competition-heading">
+        <div class="section-heading"><h2 id="competition-heading">Nearby competition</h2><span class="data-badge">{{ report.data.source_label }}</span></div>
+        {% if report.data.is_demo %}<p class="section-caption">Fictional restaurant records and sample distances.</p>{% endif %}
+        <div class="table-scroll" role="region" aria-label="Demo nearby restaurants" tabindex="0">
+            <table>
+                <thead><tr><th scope="col">Restaurant</th><th scope="col">Concept</th><th scope="col">Distance</th><th scope="col">Price</th></tr></thead>
+                <tbody>
+                {% for competitor in report.data.competitors %}
+                <tr><th scope="row"><span class="restaurant-name">{{ icon('store') }}{{ competitor.name }}</span></th><td>{{ competitor.concept }}</td><td>{{ competitor.distance }}</td><td>{{ competitor.price }}</td></tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+    <section class="assessment-section" aria-labelledby="assessment-heading">
+        <div class="section-heading"><h2 id="assessment-heading">Strengths & risks</h2><span class="small-label">{{ report.data.source_label }}</span></div>
+        <div class="assessment-group strengths">
+            <h3>{{ icon('circle-check') }}Strengths</h3>
+            {% for insight in report.score.strengths %}
+            <div class="assessment-item"><div><strong>{{ insight.label }}</strong><span>{{ '%g'|format(insight.score) }} / 100</span></div><p>{{ insight.explanation }}</p></div>
+            {% else %}<p class="section-caption">No factors meet the strength threshold.</p>{% endfor %}
+        </div>
+        <div class="assessment-group risks">
+            <h3>{{ icon('triangle-alert') }}Risks</h3>
+            {% for insight in report.score.risks %}
+            <div class="assessment-item"><div><strong>{{ insight.label }}</strong><span>{{ '%g'|format(insight.score) }} / 100</span></div><p>{{ insight.explanation }}</p></div>
+            {% else %}<p class="section-caption">No factors fall below the risk threshold.</p>{% endfor %}
+        </div>
+    </section>
+</div>
+{% endblock %}

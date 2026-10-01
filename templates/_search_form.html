@@ -1,0 +1,32 @@
+<form class="search-form" method="post" action="{{ url_for('main.home') }}" novalidate data-analysis-form>
+    <div class="form-field">
+        <label for="location">Location</label>
+        <div class="input-wrap{% if errors.get('location') %} invalid{% endif %}">
+            {{ icon('map-pin') }}
+            <input id="location" name="location" type="text" value="{{ values.get('location', '') }}"
+                placeholder="Aurora, CO" maxlength="200" required autocomplete="off"
+                {% if errors.get('location') %}aria-invalid="true" aria-describedby="location-error"{% endif %}>
+        </div>
+        {% if errors.get('location') %}<p class="field-error" id="location-error" role="alert">{{ errors.location }}</p>{% endif %}
+    </div>
+    <div class="form-field">
+        <label for="concept">Restaurant concept</label>
+        <div class="input-wrap{% if errors.get('concept') %} invalid{% endif %}">
+            {{ icon('utensils') }}
+            <input id="concept" name="concept" type="text" value="{{ values.get('concept', '') }}"
+                placeholder="Congolese Restaurant" maxlength="120" required autocomplete="off" list="concept-options"
+                {% if errors.get('concept') %}aria-invalid="true" aria-describedby="concept-error"{% endif %}>
+            <datalist id="concept-options">
+                <option value="Congolese Restaurant">
+                <option value="Cafe & Bakery">
+                <option value="Fast Casual">
+                <option value="Fine Dining">
+                <option value="Neighborhood Bistro">
+            </datalist>
+        </div>
+        {% if errors.get('concept') %}<p class="field-error" id="concept-error" role="alert">{{ errors.concept }}</p>{% endif %}
+    </div>
+    <button class="analyze-button" type="submit" data-submit-button>
+        {{ icon('scan-search') }}<span data-submit-label>Analyze Location</span>
+    </button>
+</form>
