@@ -4,14 +4,22 @@ export function invalidateAnalysis(message = "Analysis pending") {
     delete context.dataset.censusGeoid;
     context.dataset.censusStatus = "stale";
   }
+  for (const context of document.querySelectorAll("[data-site-status]")) {
+    delete context.dataset.siteId;
+    context.dataset.siteStatus = "stale";
+  }
   const pending = document.querySelector("[data-analysis-pending]");
   if (pending) {
     pending.hidden = false;
     pending.querySelector("h2").textContent = message;
   }
   const frame = document.querySelector("#map-frame");
-  if (frame) delete frame.dataset.competition;
+  if (frame) {
+    delete frame.dataset.competition;
+    delete frame.dataset.parcel;
+  }
   document.querySelector("#competition-legend").hidden = true;
+  document.querySelector("#parcel-legend").hidden = true;
   document.dispatchEvent(new CustomEvent("venuebite:analysis-invalidated"));
 }
 

@@ -10,6 +10,7 @@ from venuebite.services import AreaInsight, LocationData, LocationDataProvider
 from venuebite.services.competition_service import CompetitionAnalysis
 from venuebite.services.demographic_service import DemographicAnalysis
 from venuebite.services.explanation_service import ExplanationReport, explain_analysis
+from venuebite.services.site_intelligence_service import SiteIntelligence
 
 
 @dataclass(frozen=True)
@@ -38,13 +39,15 @@ class AnalysisReport:
     coverage: DataCoverage | None = None
     explanations: ExplanationReport | None = None
     scoring_trace: ScoreTrace | None = None
+    site: SiteIntelligence | None = None
 
 
 class AnalysisService:
-    def __init__(self, provider: LocationDataProvider, competition_service=None, demographic_service=None):
+    def __init__(self, provider: LocationDataProvider, competition_service=None, demographic_service=None, site_service=None):
         self.provider = provider
         self.competition_service = competition_service
         self.demographic_service = demographic_service
+        self.site_service = site_service
 
     def analyze(self, location, concept, *, geographic_location=None, radius_miles=3):
         data = self.provider.get_location_data(location, concept)
@@ -88,7 +91,8 @@ class AnalysisService:
         coverage = calculate_data_coverage({key: source.status for key, source in provenance.items()})
         explanations = explain_analysis(score, provenance, coverage, demographics=demographics, competition=competition)
         trace = build_score_trace(score, provenance, coverage)
-        return AnalysisReport(data, score, competition, demographics, provenance, coverage, explanations, trace)
+        site = self.site_service.analyze(geographic_location) if self.site_service else None
+        return AnalysisReport(data, score, competition, demographics, provenance, coverage, explanations, trace, site)
 
 
 def _demographic_insights(data, census, competition):

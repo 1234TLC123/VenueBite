@@ -76,6 +76,8 @@
     </section>
 </div>
 
+{% if report.site %}{% include '_site_intelligence.html' %}{% endif %}
+
 <section class="insights-section" aria-labelledby="insights-heading" data-analysis-output>
     <div class="section-heading"><h2 id="insights-heading">Area insights</h2><span class="data-badge">{{ 'Mixed sources' if report.demographics else 'Demo data' }}</span></div>
     {% if report.demographics %}{% include '_demographics.html' %}{% endif %}

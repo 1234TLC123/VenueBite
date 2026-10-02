@@ -7,9 +7,10 @@
                 <button type="button" data-map-style="satellite" aria-pressed="false" disabled>{{ icon('satellite') }}<span>Satellite</span></button>
             </div>
             <button type="button" class="icon-button" id="recenter-map" aria-label="Center selected location" title="Center selected location" disabled>{{ icon('locate-fixed') }}</button>
+            <button type="button" class="icon-button" id="focus-parcel" aria-label="Focus parcel boundary" title="Focus parcel boundary" disabled>{{ icon('scan-search') }}</button>
         </div>
     </div>
-    <div class="map-frame" id="map-frame" {% if geographic_location %}data-initial-location='{{ geographic_location.to_dict()|tojson }}'{% endif %} {% if competition_payload %}data-competition='{{ competition_payload|tojson }}'{% endif %}>
+    <div class="map-frame" id="map-frame" {% if geographic_location %}data-initial-location='{{ geographic_location.to_dict()|tojson }}'{% endif %} {% if competition_payload %}data-competition='{{ competition_payload|tojson }}'{% endif %} {% if parcel_payload %}data-parcel='{{ parcel_payload|tojson }}'{% endif %}>
         <div id="location-map" aria-label="Interactive location map"></div>
         <div class="map-overlay" id="map-overlay" role="status" aria-live="polite">
             <span class="map-symbol">{{ icon('map', 'large-icon') }}</span>
@@ -22,6 +23,7 @@
     <div class="map-legend" id="competition-legend" {% if not competition_payload %}hidden{% endif %}>
         <span><i class="legend-candidate"></i>Candidate</span><span><i class="legend-direct"></i>Direct match</span><span><i class="legend-general"></i>Other restaurant</span>
     </div>
+    <div class="map-legend" id="parcel-legend" hidden><span><i class="legend-parcel"></i><span id="parcel-match-label">Parcel boundary</span></span></div>
     <div class="map-location-summary">
         <span class="location-pin">{{ icon('map-pin') }}</span>
         <div><h3 id="selected-location-name">{% if geographic_location %}{{ geographic_location.display_name }}{% else %}No resolved location{% endif %}</h3><p id="selected-location-coordinates">{% if geographic_location %}{{ '%.5f'|format(geographic_location.latitude) }}, {{ '%.5f'|format(geographic_location.longitude) }}{% else %}Geographic coordinates unavailable{% endif %}</p></div>

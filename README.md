@@ -1,6 +1,6 @@
 # VenueBite
 
-VenueBite is a restaurant location-intelligence application built with Flask, Jinja, and vanilla JavaScript. Sprint 04 adds official Census tract population and median household income to Sprint 03 competition intelligence and the existing geographic explorer. Commercial rent remains demo; scores remain unvalidated heuristics.
+VenueBite is a restaurant location-intelligence application built with Flask, Jinja, and vanilla JavaScript. Sprint 06 adds request-scoped Regrid parcel/site context and boundaries alongside the existing Mapbox explorer, real competition, Census demographics, and Score Model v2. Parcel intelligence is separate from the four-factor score and its Data Coverage. Commercial rent remains demo; scores remain unvalidated heuristics.
 
 ## Current Features
 
@@ -10,6 +10,7 @@ VenueBite is a restaurant location-intelligence application built with Flask, Ji
 - Restaurant concept submission, a 1/3/5 mile competition radius, the existing weighted score, factor bars, classifications, strengths, risks, and individually labeled area insights.
 - Coordinate-to-tract Census lookup and 2024 ACS 5-year estimates, margins of error, geography identifiers, vintage, and independent population/income context scores.
 - Request-scoped Mapbox restaurant discovery, direct/general matching, straight-line distances, observed-sample metrics, deterministic competition explanations, and distinct map markers with safe popups.
+- Bounded coordinate-to-parcel lookup, validated Polygon/MultiPolygon boundaries, optional site attributes, conservative considerations, match quality and source/refresh metadata.
 - Hybrid analysis on live success; transparent demo-score fallback on live failure. Editing location, concept, or radius immediately invalidates the previous report and restaurant markers.
 - Loading, empty, error, retry, and missing-configuration states; explicit demo-only fallback when geographic search fails.
 - Server-side validation, signed geographic selections, replaceable geographic and market-data providers, and offline automated tests.
@@ -31,6 +32,7 @@ VenueBite is a restaurant location-intelligence application built with Flask, Ji
 | Schools / universities | Fictional demo fixture, individually labeled |
 | Population growth | Unavailable for geographic analysis; not fabricated |
 | Overall opportunity score | Hybrid: available real-derived factors plus explicitly demo factors |
+| Parcel/site context and boundary | Real Regrid records where current token coverage permits; unavailable fields omitted, never invented; separate from score and coverage |
 
 Missing geography/configuration or explicit demo-only analysis preserves the original fixture (85/80/55/60; overall 72.5), including clearly fictional area metrics and restaurant records. Geographic analysis never substitutes mock raw Census metrics or mock POIs for failed live retrieval. Each unavailable Census factor independently retains its demo score, while its raw metric says unavailable. If competition fails, its score alone falls back to 60; available Census scores still apply. If Census and competition both fail, the four-factor score is demo 72.5. A broad area's marker is a representative point, not a verified rentable site.
 
@@ -54,7 +56,7 @@ python3 -m venv .venv
 .venv/bin/python -m pip install -r requirements-dev.txt
 ```
 
-`requirements.txt` contains Flask and python-dotenv. `requirements-dev.txt` adds pytest. Install just `requirements.txt` when tests are not needed. No database or Node tooling is required to run the app.
+`requirements.txt` contains Flask, python-dotenv and Shapely (GEOS polygon topology/containment validation). `requirements-dev.txt` adds pytest. Install just `requirements.txt` when tests are not needed. No database or Node tooling is required to run the app.
 
 ## Mapbox Setup
 
@@ -91,6 +93,20 @@ Set `CENSUS_API_KEY=your_census_api_key_here` in the server environment or ignor
 
 The ACS year, geography vintage, dataset, and variable IDs are centralized in `providers/demographic_provider.py`, not guessed or derived from the current date. Sprint 04 deliberately pins 2024. Before changing release years, reverify variables, supported geography, and compatible benchmark/vintage discovery. No new dependencies are required. Missing Census credentials do not disable maps or competition.
 
+## Regrid Setup
+
+Set `REGRID_API_TOKEN=your_regrid_api_token_here` only in the server environment or ignored root `.env`, replacing the placeholder privately. Never place it in JavaScript, templates, client configuration, logs or source control. Restart Flask after configuration changes. Missing configuration leaves the app, maps, competition, Census and score runnable; the site section reports unavailable.
+
+Optional settings are `REGRID_HTTP_TIMEOUT_SECONDS=8` (above 0 through 30 seconds per request) and `REGRID_FALLBACK_RADIUS_METERS=25` (integer 0-30; 0 disables fallback). An analysis makes one exact point query and, only if empty, one nearby query. Each query requests at most two parcel records so multiple/stacked results stay ambiguous. No broad search, pagination, paid add-on response arrays, address re-geocoding or request retry is performed. Regrid calls run only on analysis submission, never autocomplete, map movement or style changes.
+
+Production uses `GET https://app.regrid.com/api/v2/parcels/point` with server-only `Authorization: Bearer` authentication, verified against the official [point reference](https://support.regrid.com/reference/get_parcels-point-1) and [header authentication guide](https://support.regrid.com/docs/mcp-server). The [schema](https://support.regrid.com/docs/schema-overview) defines the fields; absent county/premium fields mean unknown, not vacant land, no zoning, or no buildings.
+
+Coverage depends on the account/token. Regrid documents a seven-county sandbox trial (Dallas, Marion, Wilson, Durham, Fillmore, Clark and Gurabo), distinct from its nationwide self-serve trial. See [trial restrictions](https://support.regrid.com/reference/getting-started-with-your-api). No trial county allowlist is hardcoded into the application. HTTP 403 reports restricted entitlement; an empty result explains that street placement or token coverage may be responsible and never establishes parcel nonexistence. Live verification found Dallas and Durham records, while Denver Union Station returned empty exact and nearby collections: consistent with restricted trial coverage, not proof of the account's full entitlement. Confirm your actual plan in the Regrid dashboard.
+
+Usage depends on **records returned**, including repeated lookups; no cache/persistence is implemented. An exact result normally consumes one record; ambiguous results can consume two. Empty results return zero records. Review account usage, caps and licensing before heavy testing; the documented `/api/v2/usage` endpoint is free but is not queried automatically by VenueBite. See [API usage guidance](https://support.regrid.com/docs/getting-started-api). Tests never make live Regrid requests.
+
+See [Site Intelligence v1](docs/site-intelligence-v1.md) for the resolution algorithm, normalized field mapping, security decisions, live evidence and full Sprint 06 engineering report.
+
 ## Run
 
 ```powershell
@@ -98,7 +114,7 @@ The ACS year, geography vintage, dataset, and variable IDs are centralized in `p
 python app.py
 ```
 
-Open <http://127.0.0.1:5000>. With Mapbox configured, select a geographic suggestion, choose a concept and radius, and analyze. The selected place updates the map before analysis; a successful report includes live competition and Census context when configured. Editing the location clears the old selection but preserves the concept. Editing location, concept, or radius hides the entire stale report, clears Census GEOID/status metadata, and removes competitor markers. Without configuration, enter any location label and concept to run the clearly labeled demo.
+Open <http://127.0.0.1:5000>. With Mapbox configured, select a geographic suggestion, choose a concept and radius, and analyze. The selected place updates the map before analysis; a successful report includes live competition, Census context and parcel intelligence where configured/covered. Editing the location clears the old selection but preserves the concept. Editing location, concept, or radius hides the entire stale report, clears Census and parcel ID/status metadata, and removes competitor markers and parcel layers. The icon-only parcel-focus control becomes available when a valid boundary is shown; it is an explicit camera action, not automatic parcel zooming. Without configuration, enter any location label and concept to run the clearly labeled demo.
 
 Use another port when 5000 is occupied:
 
@@ -117,7 +133,7 @@ git diff --check
 git status --short
 ```
 
-Tests retain all 487 Sprint 01-04 tests and add exact v2 contributions, score traces, independent coverage credits/bands, provenance-aware explanation thresholds and ranking, rent verification risks, close direct matches, empty samples, mixed failures, partial Census results, and UI/stale-report regressions. External calls are mocked. Testing app instances skip `.env` and ignore developer Mapbox and Census credentials unless explicitly configured in a test.
+Tests retain all 578 Sprint 01-05 tests and add parcel transport, schema/optional-field handling, geometry/topology, exact/nearby/ambiguous resolution, usage bounds, safe failures, credential isolation, escaping, stale-state and numerical scoring/coverage regression tests. External calls are mocked. Testing app instances skip `.env` and ignore developer Mapbox, Census and Regrid credentials unless explicitly configured in a test. `tests/parcel-layer.test.mjs` additionally exercises map-layer and invalidation lifecycles with an isolated fake map/DOM; with Node available, run `node tests/parcel-layer.test.mjs`.
 
 ## Architecture
 
@@ -139,6 +155,8 @@ venuebite/
         mapbox_poi_provider.py       Bounded category/text searches and normalization
         demographic_provider.py     Census contracts, verified release/variable constants
         census_provider.py          Bounded Census geography and ACS adapters
+        site_provider.py            Normalized parcel contract and geometry validation
+        regrid_provider.py          Server-only bounded point lookup and schema normalization
     services/
         __init__.py                  Market-data contract
         analysis_service.py         Independent factors, structured provenance, report
@@ -147,12 +165,14 @@ venuebite/
         competition_service.py      Deduplication, filtering, matching, metrics
         mock_data_service.py        Immutable fictional market fixture
         geography_service.py        Signed selections and form resolution
+        site_intelligence_service.py Exact/nearby/ambiguous site facts, outside score model
 templates/
     base.html                       Shell and conditional official Mapbox CSS
     _search_form.html               Accessible search and concept form
     _map_workspace.html             Map surface, controls, location metadata
     _competition.html               Live metrics, explanation, sorted tables
     _demographics.html              Tract source, vintage, coverage and MOEs
+    _site_intelligence.html         Optional parcel facts, considerations and provenance
     index.html / results.html       Initial/error workspace and analysis report
 static/
     css/style.css                   Responsive dashboard and map styles
@@ -160,6 +180,7 @@ static/
     js/location-search.js           Debounced autocomplete and selection state
     js/map-viewer.js                Map lifecycle, marker, camera, style changes
     js/competition-markers.js       Bounded DOM markers, safe popups, snapshot guard
+    js/parcel-layer.js              GeoJSON fill/outline, style reload and snapshot guard
     js/analysis-state.js            Immediate stale-report/marker invalidation
     js/main.js                      Form submission and module orchestration
     icons/                          Locally vendored Lucide assets and license
@@ -167,7 +188,7 @@ tests/                              Original and new mocked-provider coverage
 .env.example                        Configuration placeholders only
 ```
 
-`create_app(config=None, data_provider=..., location_provider=..., poi_provider=..., census_geo_provider=..., demographic_provider=...)` supports independent provider substitution. Routes use services; templates consume normalized objects, never raw provider JSON. The shared `MapboxSearchClient` owns Mapbox transport; `MapboxPoiProvider` and `CompetitionService` preserve Sprint 03 discovery. Census adapters have a separate credential-safe transport. `competition_scoring.py` and `demographic_scoring.py` own factor normalization; the existing `scoring.py` still owns weighted overall scoring.
+`create_app(config=None, data_provider=..., location_provider=..., poi_provider=..., census_geo_provider=..., demographic_provider=..., site_provider=...)` supports independent provider substitution. Routes use services; templates consume normalized objects, never raw provider JSON. The shared `MapboxSearchClient` owns Mapbox transport; `MapboxPoiProvider` and `CompetitionService` preserve Sprint 03 discovery. Census and Regrid adapters have separate credential-safe transports. `competition_scoring.py` and `demographic_scoring.py` own factor normalization; the existing `scoring.py` still owns weighted overall scoring. Site intelligence is assembled after score, coverage, explanations and audit trace are calculated and never enters their inputs.
 
 Search uses Mapbox Search Box `/suggest` and `/retrieve` with the same UUID session token. After a successful retrieval, a new search session begins. The server signs the normalized selection with a 30-minute lifetime. Analysis validates that signature, location name, and any submitted coordinates, avoiding a second retrieve request. Without JavaScript, a normal form POST uses `/forward` to resolve the query on the server. A demo-only fallback bypasses lookup but never accepts unsigned client coordinates.
 
@@ -268,6 +289,7 @@ Demo, fallback, partial and unavailable factors produce verification risks regar
 
 ## Manual Verification
 
+- With Regrid configured, select complete site addresses within the token's documented coverage. Confirm exact versus nearby quality, parcel number/situs, optional field omissions, refresh date/source metadata, and the cyan parcel boundary in Map and Satellite modes. Zoom to parcel scale; the existing competitor framing is preserved. Verify all zoning/value/sale cautions and rent's demo label. Change location, concept or radius and confirm the old polygon, parcel ID and site facts clear without new Regrid calls until Analyze. Keep record usage small. See the engineering report for supported live examples and unverified cases.
 - Search cities in different states (Miami, Chicago, Dallas, New York), postcode `10001`, a neighborhood, Times Square, and a complete address. Try intersections where supported. Verify names and coordinates, marker placement, and camera framing.
 - Select with mouse and with Arrow Up/Down + Enter; dismiss with Escape. Clear/change the place and confirm the concept stays intact and stale coordinates disappear. Normal analysis remains disabled until a suggestion is resolved.
 - Analyze Denver + Indian, Miami + Cuban, Chicago + pizza, New York + coffee, and Greeley + Mexican. Verify selected coordinates, correct tract/GEOID/state/county, actual Census estimates/MOEs/source/vintage, actual POIs, and varying factor/overall scores. Verify rent/schools remain demo, growth unavailable, and no old fictional population/income metrics appear. Do not hardcode business names or expect city-wide population at a selected point.
@@ -282,8 +304,8 @@ Demo, fallback, partial and unavailable factors produce verification risks regar
 
 Live map/search/competition verification requires a Mapbox account, authorized public token, and network access. Map rendering also requires WebGL. Failures preserve geography where possible and explicitly demo scoring, not invented real results. Discovery is a capped, potentially incomplete provider sample; unsupported categories use approximate text matching. Provider data and scores can change between requests. No ratings, reviews, pricing, travel times, or opening-hours inference are used.
 
-Broad places resolve to representative points, not storefront availability. Official tract population/income estimates provide limited demographic context, not comprehensive market research. Tract size/boundaries, representative-point placement, high MOEs, group quarters, five-year pooling, POI coverage/caps, income caps, and uncalibrated scoring can materially affect comparisons. Values may change between releases and scores can saturate; differences are not claims of statistical significance. No real commercial property, zoning, traffic, demand, or business-success estimates are provided. There is **no persistent POI storage**, database, response cache, or browser localStorage. Provider results are processed per request and rendered as a temporary snapshot only. Selections and analyses are not saved.
+Broad places resolve to representative points, not storefront availability. Official tract population/income estimates provide limited demographic context, not comprehensive market research. Tract size/boundaries, representative-point placement, high MOEs, group quarters, five-year pooling, POI coverage/caps, income caps, and uncalibrated scoring can materially affect comparisons. Values may change between releases and scores can saturate; differences are not claims of statistical significance. Real parcel/assessor and informational zoning attributes may be shown, but no legal restaurant permission, availability, commercial asking rent, traffic, demand, or business-success estimates are provided. Assessor values retain county value-type context and are not independent market valuations; sale values are historical. Missing building fields never prove vacancy. There is **no persistent POI or parcel storage**, database, response cache, or browser localStorage. Provider results are processed per request and rendered as a temporary snapshot only. Selections and analyses are not saved.
 
-Next: calibrate context scoring and evaluate trustworthy commercial property/economic sources. Growth needs comparable boundaries and non-overlapping periods. Saved analyses and comparisons require provider-storage licensing review before persistence; accounts, Find an Area, AI explanations, deployment, and production hardening remain future work.
+Next: evaluate trustworthy live commercial occupancy-cost sources and calibrate context scoring without folding parcel facts into the current four-factor model. Growth needs comparable boundaries and non-overlapping periods. Saved analyses and comparisons require provider-storage licensing review before persistence; accounts, Find an Area, AI explanations, deployment, and production hardening remain future work.
 
 Icons are from [Lucide 0.468.0](https://github.com/lucide-icons/lucide/tree/0.468.0), with the license in `static/icons/LICENSE`. Maps and imagery retain Mapbox's built-in attribution.

@@ -1,4 +1,5 @@
 import { CompetitionMarkers } from "./competition-markers.js";
+import { ParcelLayer } from "./parcel-layer.js";
 
 const SDK_URL = "https://api.mapbox.com/mapbox-gl-js/v3.30.0/mapbox-gl.js";
 const STYLES = {
@@ -33,15 +34,23 @@ export class MapViewer {
     this.retry = document.querySelector("#retry-map");
     this.mode = "standard";
     this.location = null;
+    this.styleReady = false;
     this.competition = new CompetitionMarkers(this.frame);
+    this.parcel = new ParcelLayer(this.frame);
     this.reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
     if (this.frame.dataset.initialLocation) {
       try { this.location = JSON.parse(this.frame.dataset.initialLocation); } catch { this.location = null; }
     }
     document.addEventListener("venuebite:location-selected", event => this.updateLocation(event.detail));
     document.addEventListener("venuebite:location-cleared", () => this.updateLocation(null));
-    document.addEventListener("venuebite:analysis-invalidated", () => this.competition.clear());
+    document.addEventListener("venuebite:analysis-invalidated", () => {
+      this.competition.clear();
+      this.parcel.clear(this.styleReady ? this.map : null);
+    });
     document.querySelector("#recenter-map").addEventListener("click", () => this.centerLocation());
+    document.querySelector("#focus-parcel").addEventListener("click", () => {
+      if (this.styleReady) this.parcel.focus(this.map, this.location, this.reduceMotion.matches);
+    });
     this.retry.addEventListener("click", () => this.initialize());
     for (const button of document.querySelectorAll("[data-map-style]")) {
       button.addEventListener("click", () => this.switchStyle(button.dataset.mapStyle));
@@ -70,6 +79,8 @@ export class MapViewer {
     this.showState("Loading geographic view", "Connecting to Mapbox");
     clearTimeout(this.loadTimer);
     this.competition.clear();
+    this.parcel.clear(this.map);
+    this.styleReady = false;
     this.map?.remove();
     this.map = null;
     this.marker = null;
@@ -91,6 +102,7 @@ export class MapViewer {
       this.map.addControl(new window.mapboxgl.NavigationControl({ showCompass: false }), "top-right");
       this.map.on("style.load", () => {
         clearTimeout(this.loadTimer);
+        this.styleReady = true;
         if (this.mode === "standard") {
           this.map.setConfigProperty("basemap", "lightPreset", "dusk");
           this.map.setConfigProperty("basemap", "showPointOfInterestLabels", false);
@@ -128,6 +140,7 @@ export class MapViewer {
     this.marker?.remove();
     this.marker = null;
     this.competition.update(this.map, location);
+    this.parcel.update(this.styleReady ? this.map : null, location);
     if (!this.map) return;
     if (location) {
       const marker = document.createElement("div");
@@ -179,6 +192,8 @@ export class MapViewer {
     }
     this.showState("Loading map style", mode === "satellite" ? "Loading satellite imagery" : "Loading VenueBite map");
     this.watchLoad();
+    this.styleReady = false;
+    document.querySelector("#focus-parcel").disabled = true;
     try { this.map.setStyle(STYLES[mode], { diff: false }); } catch {
       clearTimeout(this.loadTimer);
       this.showState("Map unavailable", "This style could not be loaded. Retry the map.", true);

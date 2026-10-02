@@ -72,6 +72,7 @@ def home():
     service = AnalysisService(
         current_app.extensions["location_data_provider"], current_app.extensions["competition_service"],
         current_app.extensions["demographic_service"],
+        current_app.extensions["site_intelligence_service"],
     )
     try:
         report = service.analyze(
@@ -87,7 +88,11 @@ def home():
         ), 503
 
     competition_payload = report.competition.map_payload(geographic_location, values["concept"]) if report.competition else None
-    return render_template("results.html", values=values, errors={}, report=report, geographic_location=geographic_location, competition_payload=competition_payload)
+    parcel_payload = report.site.map_payload(geographic_location, values["concept"], int(radius)) if report.site else None
+    return render_template(
+        "results.html", values=values, errors={}, report=report, geographic_location=geographic_location,
+        competition_payload=competition_payload, parcel_payload=parcel_payload,
+    )
 
 
 @bp.get("/api/map-config")

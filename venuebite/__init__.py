@@ -8,15 +8,17 @@ from dotenv import load_dotenv
 from venuebite.providers.mapbox_provider import MapboxLocationProvider, public_token
 from venuebite.providers.mapbox_poi_provider import MapboxPoiProvider
 from venuebite.providers.census_provider import CensusGeoProvider, CensusDemographicProvider
+from venuebite.providers.regrid_provider import RegridProvider, fallback_radius, request_timeout
 from venuebite.distance import ALLOWED_RADIUS_MILES, DEFAULT_RADIUS_MILES
 from venuebite.services.competition_service import CompetitionService
 from venuebite.services.demographic_service import DemographicService
 from venuebite.services.geography_service import GeographyService
 from venuebite.services.mock_data_service import MockLocationDataService
+from venuebite.services.site_intelligence_service import SiteIntelligenceService
 
 
 def create_app(config=None, *, data_provider=None, location_provider=None, poi_provider=None,
-               census_geo_provider=None, demographic_provider=None):
+               census_geo_provider=None, demographic_provider=None, site_provider=None):
     root = Path(__file__).resolve().parent.parent
     if not (config and config.get("TESTING")):
         load_dotenv(root / ".env", override=False)
@@ -35,6 +37,9 @@ def create_app(config=None, *, data_provider=None, location_provider=None, poi_p
         COMPETITION_RADIUS_MILES=os.environ.get("COMPETITION_RADIUS_MILES", DEFAULT_RADIUS_MILES),
         CENSUS_API_KEY=os.environ.get("CENSUS_API_KEY", ""),
         CENSUS_HTTP_TIMEOUT_SECONDS=os.environ.get("CENSUS_HTTP_TIMEOUT_SECONDS", 8),
+        REGRID_API_TOKEN=os.environ.get("REGRID_API_TOKEN", ""),
+        REGRID_HTTP_TIMEOUT_SECONDS=os.environ.get("REGRID_HTTP_TIMEOUT_SECONDS", 8),
+        REGRID_FALLBACK_RADIUS_METERS=os.environ.get("REGRID_FALLBACK_RADIUS_METERS", 25),
     )
     if config:
         app.config.update(config)
@@ -42,6 +47,10 @@ def create_app(config=None, *, data_provider=None, location_provider=None, poi_p
         app.config["MAPBOX_ACCESS_TOKEN"] = ""
     if app.testing and "CENSUS_API_KEY" not in (config or {}):
         app.config["CENSUS_API_KEY"] = ""
+    if app.testing and "REGRID_API_TOKEN" not in (config or {}):
+        app.config["REGRID_API_TOKEN"] = ""
+    app.config["REGRID_HTTP_TIMEOUT_SECONDS"] = request_timeout(app.config["REGRID_HTTP_TIMEOUT_SECONDS"])
+    app.config["REGRID_FALLBACK_RADIUS_METERS"] = fallback_radius(app.config["REGRID_FALLBACK_RADIUS_METERS"])
     try:
         default_radius = int(str(app.config["COMPETITION_RADIUS_MILES"]))
     except (ValueError, TypeError):
@@ -68,6 +77,12 @@ def create_app(config=None, *, data_provider=None, location_provider=None, poi_p
         demographic_provider if demographic_provider is not None else CensusDemographicProvider(
             app.config["CENSUS_API_KEY"], timeout=app.config["CENSUS_HTTP_TIMEOUT_SECONDS"],
         ),
+    )
+    app.extensions["site_intelligence_service"] = SiteIntelligenceService(
+        site_provider if site_provider is not None else RegridProvider(
+            app.config["REGRID_API_TOKEN"], timeout=app.config["REGRID_HTTP_TIMEOUT_SECONDS"],
+        ),
+        fallback_radius_meters=app.config["REGRID_FALLBACK_RADIUS_METERS"],
     )
 
     @app.context_processor
