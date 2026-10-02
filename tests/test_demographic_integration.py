@@ -307,3 +307,67 @@ def test_census_geography_names_are_escaped(workspace):
     html = client.post("/", data={"location": "Denver", "concept": "Indian"}).get_data(as_text=True)
     assert '<script>alert("xss")</script>' not in html and '<img src=x' not in html
     assert "&lt;script&gt;" in html and "&lt;img" in html
+
+
+def test_score_v2_hybrid_trace_and_ui(workspace):
+    _, client, _, census_geo, census, pois = workspace
+    result = report(census_geo, census, pois)
+    assert result.coverage.percent == 80 and result.coverage.label == "High data coverage"
+    assert result.scoring_trace.model_version == "2.0"
+    assert result.scoring_trace.final_score == result.score.overall_score
+    assert result.scoring_trace.coverage == 80
+    assert [item.status for item in result.scoring_trace.factors] == ["real", "real", "demo", "real"]
+    html = client.post("/", data={"location": "Denver", "concept": "Indian"}).get_data(as_text=True)
+    for text in ("Data Coverage", "80%", "High data coverage", "VenueBite Score Model v2", "Contribution", "competition-v1", "Evidence &amp; data quality", "not success probability", "Commercial rent remains demo"):
+        assert text in html
+    for factor in result.score.factors:
+        assert f"{factor.weighted_points_label} points" in html
+    assert "raw_weighted_sum" not in html and "scoring_trace" not in html
+
+
+@pytest.mark.parametrize("failure,percent", [("census", 20), ("competition", 60), ("both", 0)])
+def test_score_v2_independent_failure_coverage(workspace, failure, percent):
+    _, client, _, census_geo, census, pois = workspace
+    if failure in {"census", "both"}:
+        census.failure = CensusError("network")
+    if failure in {"competition", "both"}:
+        pois.failure = PoiError("Competition unavailable")
+    result = report(census_geo, census, pois)
+    assert result.coverage.percent == percent and result.coverage.warning
+    assert result.score.overall_score == round(sum(item.weighted_points for item in result.score.factors), 1)
+    assert "rent" in [item.key for item in result.explanations.risks]
+    html = client.post("/", data={"location": "Denver", "concept": "Indian"}).get_data(as_text=True)
+    assert "Data gaps need verification" in html and f"{percent}%" in html
+    assert 'data-initial-location=' in html
+
+
+@pytest.mark.parametrize("population,income,percent", [(3200, None, 50), (None, 87000, 50), (None, None, 20), (0, 0, 80)])
+def test_score_v2_partial_census_is_factor_specific(workspace, population, income, percent):
+    _, _, _, census_geo, census, pois = workspace
+    census.population, census.income = population, income
+    result = report(census_geo, census, pois)
+    assert result.coverage.percent == percent
+    assert {item.status for item in result.coverage.factors} <= {"real", "demo", "fallback"}
+    assert (result.provenance["population"].real) == (population is not None)
+    assert (result.provenance["income"].real) == (income is not None)
+
+
+def test_score_v2_non_us_and_explicit_demo(workspace):
+    app, client, geography, census_geo, census, pois = workspace
+    paris = replace(LOCATION, display_name="Paris, France", country_code="fr")
+    result = report(census_geo, census, pois, paris)
+    assert result.coverage.percent == 20
+    assert not census.calls and not census_geo.calls
+    assert "population" not in [item.key for item in result.explanations.strengths]
+    html = client.post("/", data={"location": LOCATION.display_name, "concept": "Indian", "selection_token": app.extensions["geography_service"].sign(LOCATION), "demo_only": "1"}).get_data(as_text=True)
+    assert "Very limited data coverage" in html and 'value="0.0" aria-label="Real usable model data coverage, percent"' in html
+    assert "No fully real-data factors meet" in html and "verify data" in html
+
+
+def test_score_v2_output_uses_existing_stale_report_guard():
+    root = Path(__file__).resolve().parents[1]
+    results = (root / "templates/results.html").read_text()
+    score_section = results.split('aria-labelledby="score-heading" data-analysis-output>', 1)[1].split("</section>", 1)[0]
+    assert 'id="coverage-heading"' in score_section
+    assert "report.explanations.summary" in score_section and "factor.weighted_points_label" in score_section
+    assert "report.explanations.strengths" in results.split('class="lower-grid" data-analysis-output>', 1)[1]

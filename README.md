@@ -117,7 +117,7 @@ git diff --check
 git status --short
 ```
 
-Tests retain all 312 Sprint 01-03 tests and add Census geography/ACS normalization, independent partial results, sentinel/annotation handling, MOEs, safe HTTP/network/configuration failures, score anchors/interpolation/ranges, signed coordinate reuse, non-U.S. skips, provenance, and stale-report guards. External calls are mocked. Testing app instances skip `.env` and ignore developer Mapbox and Census credentials unless explicitly configured in a test.
+Tests retain all 487 Sprint 01-04 tests and add exact v2 contributions, score traces, independent coverage credits/bands, provenance-aware explanation thresholds and ranking, rent verification risks, close direct matches, empty samples, mixed failures, partial Census results, and UI/stale-report regressions. External calls are mocked. Testing app instances skip `.env` and ignore developer Mapbox and Census credentials unless explicitly configured in a test.
 
 ## Architecture
 
@@ -126,7 +126,8 @@ app.py                              Local entry point and Flask CLI export
 venuebite/
     __init__.py                     Factory, environment configuration, headers
     routes.py                       Form handling and geographic JSON endpoints
-    scoring.py                      Existing weights, classifications, insights
+    scoring.py                      Score Model v2, weights, contributions, audit trace
+    data_coverage.py                Independent weighted usable-evidence coverage
     competition_scoring.py          Centralized Competition Model v1
     demographic_scoring.py          Population / Income Model v1 anchors
     concepts.py                     Concept aliases, categories, matching rules
@@ -141,6 +142,7 @@ venuebite/
     services/
         __init__.py                  Market-data contract
         analysis_service.py         Independent factors, structured provenance, report
+        explanation_service.py      Pure factor/provenance-driven explanations
         demographic_service.py      Eligibility, geography/ACS orchestration, fallback
         competition_service.py      Deduplication, filtering, matching, metrics
         mock_data_service.py        Immutable fictional market fixture
@@ -224,18 +226,45 @@ Both models use deterministic piecewise-linear interpolation between centralized
 
 Structured per-factor provenance includes status (`real`, `demo`, `fallback`), provider, vintage, GEOID, model version, description, and fallback reason. The banner, factor badges, area metric labels, and strength/risk explanations use this state rather than inferring source from label text. Rent and schools remain demo; nearby businesses are not falsely inferred from a restaurant-only sample.
 
-### Overall Scoring Weights Are Unchanged
+### VenueBite Score Model v2
 
-Population and income each weigh 30%; rent and competition each weigh 20%:
+`VENUEBITE_SCORE_MODEL_VERSION = "2.0"` identifies composition and explainability, not a recalibration of the underlying Population, Income, or Competition Models v1. Population and income each weigh 30%; rent and competition each weigh 20%. `FACTOR_DEFINITIONS` centrally specifies weights, higher-is-better direction, and expected provenance (Census, Census, demo rent, Mapbox):
 
 ```text
-overall = population_score * 0.30 + income_score * 0.30 + rent_score * 0.20 + competition_score * 0.20
+weighted_points[factor] = factor_score * factor_weight
+raw_weighted_sum = sum(weighted_points)
+overall = round(clamp(raw_weighted_sum, 0, 100), 1)
+       = round(population_score * 0.30 + income_score * 0.30 + rent_score * 0.20 + competition_score * 0.20, 1)
 demo-only / all providers unavailable: 85 * .30 + 80 * .30 + 55 * .20 + 60 * .20 = 72.5
 ```
 
-Higher factor scores always mean better opportunity. A high rent score means more affordable occupancy costs; a high competition score means less direct competitive pressure. These normalized factors are not raw prices or restaurant counts. The displayed demo metrics do not feed a real normalization process.
+Higher factor scores always mean better opportunity context. Population describes tract demographic context, not customer demand; income describes household purchasing-power context, not restaurant spending. A high rent score means more affordable occupancy costs; a high competition score means lower observed competitive pressure. These normalized factors are not raw prices or restaurant counts. Rent stays fictional, and displayed demo metrics do not feed a real normalization process. Weights and all v1 anchors/pressure formulas are unchanged.
 
-Scores are rounded to one decimal before classification: Strong at 80+, Promising at 65+, Mixed at 50+, and Challenging below 50. Strengths start at 75; risks are below 65. The engine still rejects nonnumeric, nonfinite, missing, unknown, and out-of-range factors.
+Contributions are backend-computed and retained without rounding. The UI displays two decimals (74 at 30% contributes 22.20 points); the total is rounded once to one decimal before classification. Display rounding never feeds score calculation. The internal immutable trace retains model version, each factor's score, weight, contribution, direction, expected/actual source, status, vintage/GEOID/model/reason, coverage credit, raw sum, final score, and coverage. It is not serialized as raw debugging JSON in the UI.
+
+Classification thresholds are centralized: Strong at 80+, Promising at 65+, Mixed at 50+, Challenging below 50. These are neutral decision-support bands, not advice to invest or guarantees. Invalid factors (nonnumeric, boolean, nonfinite, missing, unknown or outside 0-100) remain rejected; final bounding protects arithmetic, not bad input.
+
+### Data Coverage, Not Success Probability
+
+Data Coverage is separate from Opportunity Score and never adjusts factor scores or their weights:
+
+```text
+credit = real: 1.0; explicit partial: 0.5; demo/fallback/unavailable: 0.0
+coverage = round(sum(factor_weight * credit * 100), 1)
+current successful hybrid = 30 + 30 + 0 + 20 = 80%
+```
+
+Labels are Very high at 90+, High at 70+, Moderate at 50+, Limited at 25+, and Very limited below 25. A nonblocking verification notice appears below 70%. Full Census + failed competition yields 60%; failed Census + usable competition yields 20%; both fail or demo-only yields 0%. A single usable Census estimate plus competition yields 50%. Genuine zero estimates are usable and receive full coverage even though their opportunity scores are zero.
+
+Coverage reads structured per-factor statuses, never label text. A partially available Census response does **not** halve an otherwise usable population or income factor: usable estimates are `real`, missing ones are `fallback`. Explicit factor-level `partial` is supported at half credit for future incomplete inputs; no current provider result is newly marked partial. A usable capped POI sample gets its full factor weight, not a claim that all restaurants were found. MOEs and discovery completeness remain quality notes, not hidden coverage penalties.
+
+Coverage measures how much of this four-factor model has real usable evidence. It is **not** scientific confidence, accuracy, restaurant demand, statistical significance, or probability of success. The current model cannot reach 100% real coverage while rent remains demo.
+
+### Deterministic Explanations
+
+`explanation_service.py` consumes only assembled score, provenance, coverage, Census metadata and observed competition; it performs no I/O, AI or random generation. Fully real factors scoring 75+ qualify as strengths, ranked by weighted contribution with stable factor-order ties; at most two appear. A real factor below 65 is a review risk. Two or more observed direct matches within 0.5 mile also flag a proximity risk, even in the balanced band. Competition prose uses its actual Low/Moderate/High pressure level, direct counts, radius and nearest distance; an empty sample never means no competitors exist.
+
+Demo, fallback, partial and unavailable factors produce verification risks regardless of score. Rent is a risk because live commercial occupancy cost is unverified, not because the demo price proves local rents are expensive. Risks rank by weighted deficit for real factors or missing coverage weight for evidence gaps, with stable ties and at most four items (one per factor). A factor cannot appear as both a strength and a risk. Each item includes its score, contribution and weight; the short summary is generated from the same structured data. Expandable source/model and evidence-quality details retain ACS survey/MOE/tract limitations, capped Mapbox sampling, and demo rent caveats. No model has been scientifically validated or calibrated against restaurant outcomes.
 
 ## Manual Verification
 

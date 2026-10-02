@@ -4,10 +4,12 @@ from types import MappingProxyType
 from venuebite.demographic_scoring import (
     POPULATION_DESCRIPTION, INCOME_DESCRIPTION, POPULATION_MODEL_VERSION, INCOME_MODEL_VERSION,
 )
-from venuebite.scoring import ScoreResult, calculate_opportunity
+from venuebite.data_coverage import DataCoverage, calculate_data_coverage
+from venuebite.scoring import ScoreResult, ScoreTrace, build_score_trace, calculate_opportunity
 from venuebite.services import AreaInsight, LocationData, LocationDataProvider
 from venuebite.services.competition_service import CompetitionAnalysis
 from venuebite.services.demographic_service import DemographicAnalysis
+from venuebite.services.explanation_service import ExplanationReport, explain_analysis
 
 
 @dataclass(frozen=True)
@@ -33,6 +35,9 @@ class AnalysisReport:
     competition: CompetitionAnalysis | None = None
     demographics: DemographicAnalysis | None = None
     provenance: MappingProxyType | None = None
+    coverage: DataCoverage | None = None
+    explanations: ExplanationReport | None = None
+    scoring_trace: ScoreTrace | None = None
 
 
 class AnalysisService:
@@ -78,7 +83,12 @@ class AnalysisService:
         if any(source.real for source in provenance.values()):
             data = replace(data, is_demo=False, source_label="Hybrid analysis")
         data = replace(data, factor_scores=MappingProxyType(factors))
-        return AnalysisReport(data, calculate_opportunity(factors), competition, demographics, MappingProxyType(provenance))
+        score = calculate_opportunity(factors)
+        provenance = MappingProxyType(provenance)
+        coverage = calculate_data_coverage({key: source.status for key, source in provenance.items()})
+        explanations = explain_analysis(score, provenance, coverage, demographics=demographics, competition=competition)
+        trace = build_score_trace(score, provenance, coverage)
+        return AnalysisReport(data, score, competition, demographics, provenance, coverage, explanations, trace)
 
 
 def _demographic_insights(data, census, competition):

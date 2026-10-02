@@ -28,7 +28,7 @@
         <h2>Analysis pending</h2><p class="section-caption">No current demographic or competition snapshot</p>
     </section>
     <section class="score-section" aria-labelledby="score-heading" data-analysis-output>
-        <div class="section-heading"><h2 id="score-heading">Opportunity score</h2><span class="small-label">{{ report.data.source_label }}</span></div>
+        <div class="section-heading"><h2 id="score-heading">Opportunity score</h2><span class="small-label score-model">{{ report.score.model_label }}</span></div>
         <div class="score-summary">
             <div class="score-value">{{ '%.1f'|format(report.score.overall_score) }}<span>/ 100</span></div>
             <div class="score-classification">
@@ -36,6 +36,13 @@
                 <p>Weighted opportunity model<br>Not a prediction of business success</p>
             </div>
         </div>
+        <div class="data-coverage" aria-labelledby="coverage-heading">
+            <div class="coverage-heading"><h3 id="coverage-heading">Data Coverage</h3><strong>{{ '%g'|format(report.coverage.percent) }}%</strong></div>
+            <meter min="0" max="100" value="{{ report.coverage.percent }}" aria-label="Real usable model data coverage, percent">{{ report.coverage.percent }}%</meter>
+            <p>{{ report.coverage.label }} &middot; Real usable model support, not success probability.</p>
+            {% if report.coverage.warning %}<p class="coverage-warning">{{ icon('triangle-alert') }}{{ report.coverage.warning }}</p>{% endif %}
+        </div>
+        <p class="score-explanation">{{ report.explanations.summary }}</p>
         <div class="factor-grid">
             {% for factor in report.score.factors %}
             {% set source = report.provenance[factor.key] %}
@@ -44,14 +51,27 @@
                 <span class="factor-source {{ 'real-source' if source.real else '' }}">{{ source.label }}{% if source.status == 'fallback' %} (fallback){% endif %}</span>
                 <div class="factor-value">{{ '%g'|format(factor.score) }}<span>/ 100</span></div>
                 <meter min="0" max="100" value="{{ factor.score }}" aria-label="{{ factor.label }} score">{{ factor.score }}</meter>
-                {% if source.vintage %}<p class="factor-context">ACS {{ source.vintage }} 5-year &middot; tract<br>{{ source.model_version }}</p>{% endif %}
-                <p>{% if source.real and factor.key in ('population', 'income') %}{{ source.description }}{% elif factor.key == 'competition' and live_competition %}Higher scores mean lower observed pressure in a limited search sample.{% else %}{{ factor.description }}{% endif %}</p>
+                <div class="factor-contribution"><span>Contribution</span><strong>{{ factor.weighted_points_label }} points</strong></div>
+                <details class="factor-details">
+                    <summary>Source &amp; model<span class="sr-only"> for {{ factor.label }}</span></summary>
+                    <p>{{ source.provider }}{% if source.vintage %} &middot; ACS {{ source.vintage }} 5-year &middot; tract{% endif %}{% if source.model_version %}<br>{{ source.model_version }}{% endif %}</p>
+                    {% if source.geoid %}<p>GEOID {{ source.geoid }}</p>{% endif %}
+                    <p>{% if source.real and factor.key in ('population', 'income') %}{{ source.description }}{% elif factor.key == 'competition' and live_competition %}Higher scores mean lower observed pressure in a limited search sample.{% else %}{{ factor.description }}{% endif %}</p>
+                    {% if source.reason %}<p>{{ source.reason }}</p>{% endif %}
+                    {% if factor.key == 'rent' %}<p>Commercial rent remains demo; verify live occupancy costs.</p>{% endif %}
+                </details>
             </article>
             {% endfor %}
         </div>
         <details class="model-details">
             <summary>{{ icon('info') }}Scoring assumptions</summary>
-            <p>Factor weights: {% for factor in report.score.factors %}{{ factor.label }} {{ factor.weight_percent }}%{% if not loop.last %}, {% else %}.{% endif %}{% endfor %} Higher factor scores always mean better opportunity. Strengths start at 75; risks are below 65. Overall classifications: strong at 80+, promising at 65+, mixed at 50+, and challenging below 50. These MVP thresholds and weights are not scientifically validated.</p>
+            <p>{{ report.explanations.assumptions }}</p>
+        </details>
+        <details class="model-details quality-details">
+            <summary>{{ icon('info') }}Evidence &amp; data quality</summary>
+            <p>Coverage credits real factors fully, explicit partial factors halfway, and demo, fallback or unavailable factors not at all. Missing Census estimates reduce only their own factor coverage.</p>
+            <ul>{% for item in report.coverage.factors %}<li>{{ report.score.factors[loop.index0].label }}: {{ item.status }} &middot; {{ '%g'|format(item.coverage_points) }} coverage points</li>{% endfor %}</ul>
+            {% for note in report.explanations.quality_notes %}<p>{{ note }}</p>{% endfor %}
         </details>
     </section>
 </div>
@@ -93,15 +113,16 @@
         <div class="section-heading"><h2 id="assessment-heading">Strengths & risks</h2><span class="small-label">{{ report.data.source_label }}</span></div>
         <div class="assessment-group strengths">
             <h3>{{ icon('circle-check') }}Strengths</h3>
-            {% for insight in report.score.strengths %}
-            <div class="assessment-item"><div><strong>{{ insight.label }}</strong><span>{{ '%g'|format(insight.score) }} / 100</span></div><p>{% if report.provenance[insight.key].real %}{{ report.provenance[insight.key].description }} ({{ report.provenance[insight.key].label }}){% else %}{{ insight.explanation }} (Demo factor){% endif %}</p></div>
-            {% else %}<p class="section-caption">No factors meet the strength threshold.</p>{% endfor %}
+            {% for insight in report.explanations.strengths %}
+            <div class="assessment-item"><div><strong>{{ insight.label }}</strong><span>{{ '%g'|format(insight.score) }} / 100</span></div><p>{{ insight.explanation }}</p></div>
+            {% else %}<p class="section-caption">No fully real-data factors meet the strength threshold.</p>{% endfor %}
         </div>
         <div class="assessment-group risks">
             <h3>{{ icon('triangle-alert') }}Risks</h3>
-            {% for insight in report.score.risks %}
-            <div class="assessment-item"><div><strong>{{ insight.label }}</strong><span>{{ '%g'|format(insight.score) }} / 100</span></div><p>{% if report.provenance[insight.key].real %}{{ report.provenance[insight.key].description }} ({{ report.provenance[insight.key].label }}){% else %}{{ insight.explanation }} (Demo factor){% endif %}</p></div>
-            {% else %}<p class="section-caption">No factors fall below the risk threshold.</p>{% endfor %}
+            {% for insight in report.explanations.risks %}
+            <div class="assessment-item"><div><strong>{{ insight.label }}{% if insight.status != 'real' %} &middot; verify data{% endif %}</strong><span>{{ '%g'|format(insight.score) }} / 100</span></div><p>{{ insight.explanation }}</p></div>
+            {% endfor %}
+            {% if report.explanations.no_numeric_risks %}<p class="section-caption">No factors fall below the risk threshold.{% if report.explanations.risks %} Evidence or proximity risks still require verification.{% endif %}</p>{% endif %}
         </div>
     </section>
 </div>
