@@ -29,6 +29,11 @@
                 {% if errors.get('concept') %}aria-invalid="true" aria-describedby="concept-error"{% endif %}>
             <datalist id="concept-options">
                 <option value="Congolese Restaurant">
+                <option value="Indian Restaurant">
+                <option value="Mexican Restaurant">
+                <option value="Cuban Restaurant">
+                <option value="Pizza Restaurant">
+                <option value="Coffee Shop">
                 <option value="Cafe & Bakery">
                 <option value="Fast Casual">
                 <option value="Fine Dining">
@@ -37,9 +42,17 @@
         </div>
         {% if errors.get('concept') %}<p class="field-error" id="concept-error" role="alert">{{ errors.concept }}</p>{% endif %}
     </div>
+    <div class="form-field radius-field">
+        <label for="radius-miles">Search radius</label>
+        <select id="radius-miles" name="radius_miles" {% if errors.get('radius_miles') %}aria-invalid="true" aria-describedby="radius-error"{% endif %}>
+            {% for radius in (1, 3, 5) %}<option value="{{ radius }}" {% if values.get('radius_miles', default_radius_miles)|string == radius|string %}selected{% endif %}>{{ radius }} mile{% if radius != 1 %}s{% endif %}</option>{% endfor %}
+        </select>
+        {% if errors.get('radius_miles') %}<p class="field-error" id="radius-error" role="alert">{{ errors.radius_miles }}</p>{% endif %}
+    </div>
     <button class="analyze-button" type="submit" data-submit-button>
         {{ icon('scan-search') }}<span data-submit-label>Analyze Location</span>
     </button>
+    <p class="analysis-progress" data-analysis-progress role="status" aria-live="polite" hidden></p>
     <button class="demo-fallback" type="submit" name="demo_only" value="1" data-demo-fallback {% if not geography_error %}hidden{% endif %}>Analyze demo only</button>
     <noscript><p class="search-status">JavaScript is unavailable. The map and autocomplete are unavailable; submitted locations can still be resolved on the server.</p></noscript>
 </form>

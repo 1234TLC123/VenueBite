@@ -1,3 +1,5 @@
+import { CompetitionMarkers } from "./competition-markers.js";
+
 const SDK_URL = "https://api.mapbox.com/mapbox-gl-js/v3.30.0/mapbox-gl.js";
 const STYLES = {
   standard: "mapbox://styles/mapbox/standard",
@@ -31,12 +33,14 @@ export class MapViewer {
     this.retry = document.querySelector("#retry-map");
     this.mode = "standard";
     this.location = null;
+    this.competition = new CompetitionMarkers(this.frame);
     this.reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
     if (this.frame.dataset.initialLocation) {
       try { this.location = JSON.parse(this.frame.dataset.initialLocation); } catch { this.location = null; }
     }
     document.addEventListener("venuebite:location-selected", event => this.updateLocation(event.detail));
     document.addEventListener("venuebite:location-cleared", () => this.updateLocation(null));
+    document.addEventListener("venuebite:analysis-invalidated", () => this.competition.clear());
     document.querySelector("#recenter-map").addEventListener("click", () => this.centerLocation());
     this.retry.addEventListener("click", () => this.initialize());
     for (const button of document.querySelectorAll("[data-map-style]")) {
@@ -65,6 +69,7 @@ export class MapViewer {
     this.retry.disabled = true;
     this.showState("Loading geographic view", "Connecting to Mapbox");
     clearTimeout(this.loadTimer);
+    this.competition.clear();
     this.map?.remove();
     this.map = null;
     this.marker = null;
@@ -122,6 +127,7 @@ export class MapViewer {
     document.querySelector("#recenter-map").disabled = !location || !this.map;
     this.marker?.remove();
     this.marker = null;
+    this.competition.update(this.map, location);
     if (!this.map) return;
     if (location) {
       const marker = document.createElement("div");
@@ -151,7 +157,13 @@ export class MapViewer {
   centerLocation(animate = true) {
     if (!this.location || !this.map) return;
     const duration = this.reduceMotion.matches || !animate ? 0 : 1000;
-    if (this.location.bbox?.length === 4) {
+    const payload = this.competition.currentPayload(this.location);
+    if (payload?.pois.length) {
+      const bounds = new window.mapboxgl.LngLatBounds();
+      bounds.extend([this.location.longitude, this.location.latitude]);
+      for (const poi of payload.pois) bounds.extend([poi.longitude, poi.latitude]);
+      this.map.fitBounds(bounds, { padding: 48, maxZoom: 15, duration });
+    } else if (this.location.bbox?.length === 4) {
       this.map.fitBounds(this.location.bbox, { padding: 48, maxZoom: 16, duration });
     } else {
       const zoom = { country: 4, region: 6, place: 10, locality: 12, neighborhood: 13, postcode: 12, street: 14 }[this.location.place_type] || 16;

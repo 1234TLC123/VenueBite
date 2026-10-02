@@ -1,10 +1,12 @@
 import { fetchJson } from "./api.js";
 import { LocationSearch } from "./location-search.js";
 import { MapViewer } from "./map-viewer.js";
+import { bindAnalysisState, invalidateAnalysis } from "./analysis-state.js";
 
 const form = document.querySelector("[data-analysis-form]");
 const submitButton = document.querySelector("[data-submit-button]");
 const submitLabel = document.querySelector("[data-submit-label]");
+bindAnalysisState();
 
 if (form && submitButton && submitLabel) {
   form.addEventListener("submit", event => {
@@ -20,6 +22,11 @@ if (form && submitButton && submitLabel) {
     submitButton.disabled = true;
     submitButton.classList.add("is-loading");
     submitLabel.textContent = "Analyzing...";
+    const message = demoOnly || form.dataset.geographyEnabled !== "true" ? "Analyzing demo data..." : "Retrieving nearby competition...";
+    invalidateAnalysis(message);
+    const progress = document.querySelector("[data-analysis-progress]");
+    progress.textContent = message;
+    progress.hidden = false;
     form.setAttribute("aria-busy", "true");
   });
 
@@ -28,6 +35,7 @@ if (form && submitButton && submitLabel) {
     submitButton.classList.remove("is-loading");
     submitLabel.textContent = "Analyze Location";
     form.removeAttribute("aria-busy");
+    document.querySelector("[data-analysis-progress]").hidden = true;
   });
 
   const invalidField = form.querySelector('[aria-invalid="true"]');

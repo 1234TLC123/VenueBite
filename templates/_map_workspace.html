@@ -9,7 +9,7 @@
             <button type="button" class="icon-button" id="recenter-map" aria-label="Center selected location" title="Center selected location" disabled>{{ icon('locate-fixed') }}</button>
         </div>
     </div>
-    <div class="map-frame" id="map-frame" {% if geographic_location %}data-initial-location='{{ geographic_location.to_dict()|tojson }}'{% endif %}>
+    <div class="map-frame" id="map-frame" {% if geographic_location %}data-initial-location='{{ geographic_location.to_dict()|tojson }}'{% endif %} {% if competition_payload %}data-competition='{{ competition_payload|tojson }}'{% endif %}>
         <div id="location-map" aria-label="Interactive location map"></div>
         <div class="map-overlay" id="map-overlay" role="status" aria-live="polite">
             <span class="map-symbol">{{ icon('map', 'large-icon') }}</span>
@@ -18,6 +18,9 @@
             {% if not map_enabled %}<span class="map-status">Live map data will be added later once Mapbox is configured.</span>{% endif %}
             <button type="button" class="map-retry" id="retry-map" hidden>Retry map</button>
         </div>
+    </div>
+    <div class="map-legend" id="competition-legend" {% if not competition_payload %}hidden{% endif %}>
+        <span><i class="legend-candidate"></i>Candidate</span><span><i class="legend-direct"></i>Direct match</span><span><i class="legend-general"></i>Other restaurant</span>
     </div>
     <div class="map-location-summary">
         <span class="location-pin">{{ icon('map-pin') }}</span>

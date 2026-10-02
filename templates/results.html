@@ -1,14 +1,19 @@
 {% extends 'base.html' %}
 {% block title %}{{ report.data.location }}{% endblock %}
 {% block content %}
-{% if report.data.is_demo %}
-<div class="demo-notice">
+{% set live_competition = report.competition and report.competition.available %}
+<div class="demo-notice" data-analysis-output>
     {{ icon('flask-conical') }}
+    {% if live_competition %}
+    <p><strong>Hybrid analysis.</strong> Real geography and observed Mapbox competition; population, income, rent, and area insights remain demo. The opportunity score combines real-derived and fictional factors.</p>
+    {% elif report.competition %}
+    <p><strong>Demo market analysis - live competition unavailable.</strong> Demo data only: all four scores and area metrics are fictional. Real geography remains available; no live competitor results are shown.</p>
+    {% else %}
     <p><strong>Demo market analysis.</strong> Demo data only: scores, market metrics, restaurants, and competition distances are fictional. All searches use the same sample dataset.</p>
+    {% endif %}
 </div>
-{% endif %}
 
-<div class="report-heading">
+<div class="report-heading" data-analysis-output>
     <div class="report-title">
         {{ icon('map-pin') }}
         <div><h2>{{ report.data.location }}</h2><p>{{ report.data.concept }}</p></div>
@@ -19,7 +24,10 @@
 <div class="analysis-grid">
     {% include '_map_workspace.html' %}
 
-    <section class="score-section" aria-labelledby="score-heading">
+    <section class="empty-score analysis-pending" data-analysis-pending hidden aria-live="polite">
+        <h2>Analysis pending</h2><p class="section-caption">No current competition snapshot</p>
+    </section>
+    <section class="score-section" aria-labelledby="score-heading" data-analysis-output>
         <div class="section-heading"><h2 id="score-heading">Opportunity score</h2><span class="small-label">{{ report.data.source_label }}</span></div>
         <div class="score-summary">
             <div class="score-value">{{ '%.1f'|format(report.score.overall_score) }}<span>/ 100</span></div>
@@ -32,9 +40,10 @@
             {% for factor in report.score.factors %}
             <article class="factor-card {{ factor.signal }}">
                 <div class="factor-header"><h3>{{ icon(factor.icon) }}{{ factor.label }}</h3><span>{{ factor.weight_percent }}% weight</span></div>
+                <span class="factor-source {{ 'real-source' if factor.key == 'competition' and live_competition else '' }}">{{ 'Real observed data' if factor.key == 'competition' and live_competition else 'Demo data' }}</span>
                 <div class="factor-value">{{ '%g'|format(factor.score) }}<span>/ 100</span></div>
                 <meter min="0" max="100" value="{{ factor.score }}" aria-label="{{ factor.label }} score">{{ factor.score }}</meter>
-                <p>{{ factor.description }}</p>
+                <p>{% if factor.key == 'competition' and live_competition %}Higher scores mean lower observed pressure in a limited search sample.{% else %}{{ factor.description }}{% endif %}</p>
             </article>
             {% endfor %}
         </div>
@@ -45,8 +54,8 @@
     </section>
 </div>
 
-<section class="insights-section" aria-labelledby="insights-heading">
-    <div class="section-heading"><h2 id="insights-heading">Area insights</h2><span class="data-badge">{{ report.data.source_label }}</span></div>
+<section class="insights-section" aria-labelledby="insights-heading" data-analysis-output>
+    <div class="section-heading"><h2 id="insights-heading">Area insights</h2><span class="data-badge">Demo data</span></div>
     <div class="metrics-grid">
         {% for insight in report.data.area_insights %}
         <article class="metric">
@@ -57,7 +66,10 @@
     </div>
 </section>
 
-<div class="lower-grid">
+<div class="lower-grid" data-analysis-output>
+    {% if report.competition %}
+    {% include '_competition.html' %}
+    {% else %}
     <section class="competition-section" aria-labelledby="competition-heading">
         <div class="section-heading"><h2 id="competition-heading">Nearby competition</h2><span class="data-badge">{{ report.data.source_label }}</span></div>
         {% if report.data.is_demo %}<p class="section-caption">Fictional restaurant records and sample distances.</p>{% endif %}
@@ -72,18 +84,19 @@
             </table>
         </div>
     </section>
+    {% endif %}
     <section class="assessment-section" aria-labelledby="assessment-heading">
         <div class="section-heading"><h2 id="assessment-heading">Strengths & risks</h2><span class="small-label">{{ report.data.source_label }}</span></div>
         <div class="assessment-group strengths">
             <h3>{{ icon('circle-check') }}Strengths</h3>
             {% for insight in report.score.strengths %}
-            <div class="assessment-item"><div><strong>{{ insight.label }}</strong><span>{{ '%g'|format(insight.score) }} / 100</span></div><p>{{ insight.explanation }}</p></div>
+            <div class="assessment-item"><div><strong>{{ insight.label }}</strong><span>{{ '%g'|format(insight.score) }} / 100</span></div><p>{% if insight.label == 'Competition' and live_competition %}{{ report.competition.explanation }}{% else %}{{ insight.explanation }} (Demo factor){% endif %}</p></div>
             {% else %}<p class="section-caption">No factors meet the strength threshold.</p>{% endfor %}
         </div>
         <div class="assessment-group risks">
             <h3>{{ icon('triangle-alert') }}Risks</h3>
             {% for insight in report.score.risks %}
-            <div class="assessment-item"><div><strong>{{ insight.label }}</strong><span>{{ '%g'|format(insight.score) }} / 100</span></div><p>{{ insight.explanation }}</p></div>
+            <div class="assessment-item"><div><strong>{{ insight.label }}</strong><span>{{ '%g'|format(insight.score) }} / 100</span></div><p>{% if insight.label == 'Competition' and live_competition %}{{ report.competition.explanation }}{% else %}{{ insight.explanation }} (Demo factor){% endif %}</p></div>
             {% else %}<p class="section-caption">No factors fall below the risk threshold.</p>{% endfor %}
         </div>
     </section>

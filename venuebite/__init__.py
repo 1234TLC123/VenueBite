@@ -6,11 +6,14 @@ from flask import Flask, render_template, request
 from dotenv import load_dotenv
 
 from venuebite.providers.mapbox_provider import MapboxLocationProvider, public_token
+from venuebite.providers.mapbox_poi_provider import MapboxPoiProvider
+from venuebite.distance import ALLOWED_RADIUS_MILES, DEFAULT_RADIUS_MILES
+from venuebite.services.competition_service import CompetitionService
 from venuebite.services.geography_service import GeographyService
 from venuebite.services.mock_data_service import MockLocationDataService
 
 
-def create_app(config=None, *, data_provider=None, location_provider=None):
+def create_app(config=None, *, data_provider=None, location_provider=None, poi_provider=None):
     root = Path(__file__).resolve().parent.parent
     if not (config and config.get("TESTING")):
         load_dotenv(root / ".env", override=False)
@@ -25,11 +28,18 @@ def create_app(config=None, *, data_provider=None, location_provider=None):
         MAPBOX_ACCESS_TOKEN=os.environ.get("MAPBOX_ACCESS_TOKEN", ""),
         MAPBOX_SEARCH_COUNTRIES=os.environ.get("MAPBOX_SEARCH_COUNTRIES", ""),
         MAPBOX_REQUEST_ORIGIN=os.environ.get("MAPBOX_REQUEST_ORIGIN", ""),
+        MAPBOX_HTTP_TIMEOUT_SECONDS=os.environ.get("MAPBOX_HTTP_TIMEOUT_SECONDS", 6),
+        COMPETITION_RADIUS_MILES=os.environ.get("COMPETITION_RADIUS_MILES", DEFAULT_RADIUS_MILES),
     )
     if config:
         app.config.update(config)
     if app.testing and "MAPBOX_ACCESS_TOKEN" not in (config or {}):
         app.config["MAPBOX_ACCESS_TOKEN"] = ""
+    try:
+        default_radius = int(str(app.config["COMPETITION_RADIUS_MILES"]))
+    except (ValueError, TypeError):
+        default_radius = DEFAULT_RADIUS_MILES
+    app.config["COMPETITION_RADIUS_MILES"] = default_radius if default_radius in ALLOWED_RADIUS_MILES else DEFAULT_RADIUS_MILES
 
     app.extensions["location_data_provider"] = (
         data_provider if data_provider is not None else MockLocationDataService()
@@ -38,8 +48,14 @@ def create_app(config=None, *, data_provider=None, location_provider=None):
         app.config["MAPBOX_ACCESS_TOKEN"],
         countries=app.config["MAPBOX_SEARCH_COUNTRIES"],
         request_origin=app.config["MAPBOX_REQUEST_ORIGIN"],
+        timeout=app.config["MAPBOX_HTTP_TIMEOUT_SECONDS"],
     )
     app.extensions["geography_service"] = GeographyService(geographic_provider, app.config["SECRET_KEY"])
+    restaurant_provider = poi_provider if poi_provider is not None else MapboxPoiProvider(
+        app.config["MAPBOX_ACCESS_TOKEN"], countries=app.config["MAPBOX_SEARCH_COUNTRIES"],
+        request_origin=app.config["MAPBOX_REQUEST_ORIGIN"], timeout=app.config["MAPBOX_HTTP_TIMEOUT_SECONDS"],
+    )
+    app.extensions["competition_service"] = CompetitionService(restaurant_provider)
 
     @app.context_processor
     def geography_context():
@@ -47,6 +63,7 @@ def create_app(config=None, *, data_provider=None, location_provider=None):
             "geography_enabled": geographic_provider.enabled,
             "map_enabled": bool(public_token(app.config["MAPBOX_ACCESS_TOKEN"])),
             "map_configuration_message": geographic_provider.configuration_message,
+            "default_radius_miles": app.config["COMPETITION_RADIUS_MILES"],
         }
 
     from venuebite.routes import bp

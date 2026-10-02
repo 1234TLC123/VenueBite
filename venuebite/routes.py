@@ -4,6 +4,7 @@ from venuebite.providers.location_provider import LocationError, validate_identi
 from venuebite.providers.mapbox_provider import public_token
 from venuebite.services import DataProviderError
 from venuebite.services.analysis_service import AnalysisService
+from venuebite.distance import ALLOWED_RADIUS_MILES
 
 bp = Blueprint("main", __name__)
 FIELD_LIMITS = {"location": 200, "concept": 120}
@@ -34,6 +35,11 @@ def home():
         return render_template("index.html", values={}, errors={})
 
     values, errors = validate_form(request.form)
+    radius = request.form.get("radius_miles", str(current_app.config["COMPETITION_RADIUS_MILES"]))
+    if len(request.form.getlist("radius_miles")) > 1 or radius not in {str(value) for value in ALLOWED_RADIUS_MILES}:
+        errors["radius_miles"] = "Choose a 1, 3, or 5 mile radius."
+        radius = str(current_app.config["COMPETITION_RADIUS_MILES"])
+    values["radius_miles"] = radius
     geography = current_app.extensions["geography_service"]
     geographic_location = None
     token = request.form.get("selection_token", "")
@@ -63,9 +69,13 @@ def home():
             longitude=geographic_location.longitude,
         )
 
-    service = AnalysisService(current_app.extensions["location_data_provider"])
+    service = AnalysisService(current_app.extensions["location_data_provider"], current_app.extensions["competition_service"])
     try:
-        report = service.analyze(values["location"], values["concept"])
+        report = service.analyze(
+            values["location"], values["concept"],
+            geographic_location=geographic_location if request.form.get("demo_only") != "1" else None,
+            radius_miles=int(radius),
+        )
     except DataProviderError:
         current_app.logger.exception("Location data provider failed")
         return render_template(
@@ -73,7 +83,8 @@ def home():
             page_error="Location data is temporarily unavailable. Please try again.",
         ), 503
 
-    return render_template("results.html", values=values, errors={}, report=report, geographic_location=geographic_location)
+    competition_payload = report.competition.map_payload(geographic_location, values["concept"]) if report.competition else None
+    return render_template("results.html", values=values, errors={}, report=report, geographic_location=geographic_location, competition_payload=competition_payload)
 
 
 @bp.get("/api/map-config")

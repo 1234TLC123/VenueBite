@@ -1,4 +1,6 @@
 import json
+import logging
+import math
 from numbers import Real
 from urllib.error import HTTPError, URLError
 from urllib.parse import quote, urlencode, urlsplit
@@ -12,6 +14,7 @@ from venuebite.providers.location_provider import (
 
 PUBLIC_TOKEN_MESSAGE = "Set MAPBOX_ACCESS_TOKEN in .env to enable real location search and maps. Demo analysis is available."
 FEATURE_TYPES = "country,region,postcode,district,place,locality,neighborhood,street,address,poi"
+logger = logging.getLogger(__name__)
 
 
 def public_token(token):
@@ -41,10 +44,21 @@ def _display_name(properties):
     return result[:200]
 
 
-class MapboxLocationProvider:
+DEFAULT_HTTP_TIMEOUT_SECONDS = 6
+
+
+def request_timeout(value):
+    try:
+        timeout = float(value)
+        return timeout if math.isfinite(timeout) and 0 < timeout <= 30 else DEFAULT_HTTP_TIMEOUT_SECONDS
+    except (TypeError, ValueError):
+        return DEFAULT_HTTP_TIMEOUT_SECONDS
+
+
+class MapboxSearchClient:
     base_url = "https://api.mapbox.com/search/searchbox/v1"
 
-    def __init__(self, token, *, countries="", request_origin="", timeout=6):
+    def __init__(self, token, *, countries="", request_origin="", timeout=DEFAULT_HTTP_TIMEOUT_SECONDS):
         self._token = public_token(token)
         self.enabled = bool(self._token)
         self.configuration_message = (
@@ -52,7 +66,7 @@ class MapboxLocationProvider:
             if token and not self.enabled else PUBLIC_TOKEN_MESSAGE
         )
         self.countries = countries
-        self.timeout = timeout
+        self.timeout = request_timeout(timeout)
         try:
             origin = urlsplit(request_origin)
         except ValueError:
@@ -79,10 +93,14 @@ class MapboxLocationProvider:
                     raise ValueError("Unexpected provider response")
                 return payload
         except HTTPError as error:
+            # Never log the exception, URL, query string, or upstream response body.
+            logger.warning("Mapbox Search Box request failed: endpoint=%s status=%s", endpoint.split("/", 1)[0], error.code)
             if error.code in {401, 403}:
                 message = "Mapbox rejected the configuration. Check the public token, scopes, and URL restrictions."
             elif error.code == 429:
                 message = "Location search is busy. Wait a moment and try again."
+            elif error.code == 400:
+                message = "Mapbox rejected the search request. Live search is temporarily unavailable."
             else:
                 message = "Location search is temporarily unavailable. Please try again."
             raise LocationError(message) from None
@@ -91,6 +109,8 @@ class MapboxLocationProvider:
         except (ValueError, UnicodeDecodeError, RecursionError):
             raise LocationError("Mapbox returned an unreadable response. Please try another search.", code="invalid_response", status=502) from None
 
+
+class MapboxLocationProvider(MapboxSearchClient):
     def suggest(self, query, session_token):
         payload = self._request_json("suggest", {
             "q": validate_query(query), "session_token": validate_session(session_token),

@@ -1,0 +1,46 @@
+{% set competition = report.competition %}
+<section class="competition-section" aria-labelledby="competition-heading">
+    <div class="section-heading"><h2 id="competition-heading">Nearby competition</h2><span class="{{ 'geo-badge' if competition.available else 'data-badge' }}">{{ 'Live via Mapbox' if competition.available else 'Unavailable' }}</span></div>
+    {% if competition.available %}
+    <div class="competition-summary">
+        <div><strong>{{ '%g'|format(competition.model.score) }}<small> / 100</small></strong><span>Competition score</span></div>
+        <div><strong>{{ competition.model.level }}</strong><span>Observed pressure</span></div>
+        <div><strong>{{ competition.radius_miles }} mi</strong><span>Search radius</span></div>
+    </div>
+    <dl class="competition-metrics">
+        <div><dt>Nearby results observed</dt><dd>{{ competition.rows|length }}</dd></div>
+        <div><dt>Direct matches observed</dt><dd>{{ competition.direct_count }}</dd></div>
+        <div><dt>Nearest direct match</dt><dd>{{ competition.nearest_direct_label }}</dd></div>
+        <div><dt>Nearest restaurant</dt><dd>{{ competition.nearest_restaurant_label }}</dd></div>
+        <div><dt>Average direct distance</dt><dd>{{ competition.average_direct_label }}</dd></div>
+    </dl>
+    <p class="competition-explanation">{{ competition.explanation }}</p>
+    <p class="competition-note">{{ competition.matching_note }}</p>
+    <details class="model-details competition-model">
+        <summary>{{ icon('info') }}VenueBite Competition Model v1</summary>
+        <p>Each direct match adds 10 pressure points; other restaurants add 1.5. Distance multipliers: 1 within 0.5 mi, 0.7 up to 1 mi, 0.35 up to 3 mi, and 0.15 up to 5 mi. Score = 100 / (1 + pressure / 40), rounded to one decimal. Low pressure: score 75+; moderate: 45+; high: below 45. These are unvalidated assumptions, not market-share or success estimates.</p>
+        <p>Observed pressure points: {{ '%g'|format(competition.model.pressure) }}. Distances are straight-line, not driving distances. Business status is unknown unless supplied; known permanently closed results are excluded.</p>
+    </details>
+    {% for direct in (true, false) %}
+    <div class="competition-group">
+        <h3>{{ 'Direct matches' if direct else 'Nearby restaurant environment' }}</h3>
+        {% set rows = competition.rows|selectattr('is_direct', 'equalto', direct)|list %}
+        {% if rows %}
+        <div class="table-scroll" role="region" aria-label="{{ 'Direct competitor results' if direct else 'General nearby restaurant results' }}" tabindex="0">
+            <table class="live-competition-table">
+                <thead><tr><th scope="col">Restaurant</th><th scope="col">Match</th><th scope="col">Distance</th></tr></thead>
+                <tbody>{% for row in rows %}
+                    <tr><th scope="row"><span class="restaurant-name">{{ icon('store') }}{{ row.poi.name }}</span>{% if row.poi.address %}<span class="restaurant-address">{{ row.poi.address }}</span>{% endif %}</th><td>{{ row.match_basis }}</td><td>{{ row.distance_label }}</td></tr>
+                {% endfor %}</tbody>
+            </table>
+        </div>
+        {% else %}<p class="competition-note">No {{ 'direct matches' if direct else 'other restaurant results' }} returned in this sample.</p>{% endif %}
+    </div>
+    {% endfor %}
+    <p class="coverage-note">{{ competition.coverage_note }}</p>
+    <p class="provider-attribution">{{ competition.attribution or 'Search results powered by Mapbox.' }}</p>
+    {% else %}
+    <p class="competition-unavailable" role="status">{{ competition.error }}</p>
+    <p class="competition-note">Live competition is unavailable. The overall score retains the explicitly labeled demo competition factor, not a real competition measurement. Try the analysis again when the provider is available.</p>
+    {% endif %}
+</section>

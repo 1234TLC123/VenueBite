@@ -50,6 +50,7 @@ export class LocationSearch {
     this.selected = false;
     for (const id of ["selection-token", "latitude", "longitude"]) document.getElementById(id).value = "";
     this.form.classList.remove("has-selection");
+    delete document.querySelector("#map-frame").dataset.initialLocation;
     this.syncButton();
     document.dispatchEvent(new CustomEvent("venuebite:location-cleared"));
   }
@@ -169,6 +170,7 @@ export class LocationSearch {
         throw new Error("The selected location could not be resolved. Try another suggestion.");
       }
       this.input.value = location.display_name;
+      document.querySelector("#map-frame").dataset.initialLocation = JSON.stringify(location);
       document.querySelector("#selection-token").value = data.selection_token;
       document.querySelector("#latitude").value = location.latitude;
       document.querySelector("#longitude").value = location.longitude;
