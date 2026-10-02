@@ -2,18 +2,11 @@
 {% block content %}
 <div class="demo-notice">
     {{ icon('flask-conical') }}
-    <p><strong>Demo data only.</strong> All searches use the same sample dataset. No verified location or concept data.</p>
+    <p><strong>Demo market analysis.</strong> Demo data only: all searches use the same sample dataset. Geographic search and maps use real location data when configured.</p>
 </div>
 
 <div class="analysis-grid empty-workspace">
-    <section class="location-section" aria-labelledby="location-heading">
-        <div class="section-heading"><h2 id="location-heading">Location context</h2><span class="small-label">LIVE MAP PENDING</span></div>
-        <div class="map-placeholder empty-map">
-            <span class="map-symbol">{{ icon('map', 'large-icon') }}</span>
-            <h3>No location selected</h3>
-            <span class="map-status">{{ icon('circle-dashed') }}Live map data will be added later</span>
-        </div>
-    </section>
+    {% include '_map_workspace.html' %}
 
     <section class="empty-score" aria-labelledby="empty-score-heading">
         <p class="eyebrow">VENUEBITE OPPORTUNITY SCORE</p>

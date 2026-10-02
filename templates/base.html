@@ -7,7 +7,8 @@
     <title>{% block title %}Analyze a Location{% endblock %} | VenueBite</title>
     <link rel="icon" href="{{ url_for('static', filename='icons/map-pin.svg') }}" type="image/svg+xml">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-    <script src="{{ url_for('static', filename='js/main.js') }}" defer></script>
+    {% if map_enabled %}<link rel="stylesheet" href="https://api.mapbox.com/mapbox-gl-js/v3.30.0/mapbox-gl.css">{% endif %}
+    <script src="{{ url_for('static', filename='js/main.js') }}" type="module"></script>
 </head>
 <body>
     {% from '_icons.html' import icon with context %}
@@ -34,16 +35,16 @@
                 <span class="tooltip" role="tooltip">Coming soon</span>
             </span>
         </nav>
-        <span class="header-status"><span class="status-dot"></span>Demo workspace</span>
+        <span class="header-status"><span class="status-dot"></span>Location explorer</span>
     </header>
 
     <main id="main" class="workspace">
         <div class="page-heading">
             <div>
-                <p class="eyebrow">LOCATION INTELLIGENCE</p>
-                <h1>Location analysis</h1>
+                <p class="eyebrow">VENUEBITE WORKSPACE</p>
+                <h1>Location intelligence</h1>
             </div>
-            <span class="version-tag">MVP / 01</span>
+            <span class="version-tag">EXPLORER / 02</span>
         </div>
         {% include '_search_form.html' %}
         {% if page_error %}
@@ -53,7 +54,7 @@
     </main>
     <footer class="app-footer">
         <span>VenueBite <span class="footer-divider">/</span> Location intelligence</span>
-        <span>Demo model. Not a guarantee of business success.</span>
+        <span>Real geography. Demo market analysis. Not a guarantee of business success.</span>
     </footer>
 </body>
 </html>

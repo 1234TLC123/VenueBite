@@ -1,12 +1,23 @@
-<form class="search-form" method="post" action="{{ url_for('main.home') }}" novalidate data-analysis-form>
-    <div class="form-field">
+<form class="search-form" method="post" action="{{ url_for('main.home') }}" novalidate data-analysis-form data-geography-enabled="{{ 'true' if geography_enabled else 'false' }}">
+    <input type="hidden" name="selection_token" id="selection-token" value="{{ values.get('selection_token', '') }}">
+    <input type="hidden" name="latitude" id="latitude" value="{{ values.get('latitude', '') }}">
+    <input type="hidden" name="longitude" id="longitude" value="{{ values.get('longitude', '') }}">
+    <div class="form-field location-search">
         <label for="location">Location</label>
         <div class="input-wrap{% if errors.get('location') %} invalid{% endif %}">
             {{ icon('map-pin') }}
             <input id="location" name="location" type="text" value="{{ values.get('location', '') }}"
-                placeholder="Aurora, CO" maxlength="200" required autocomplete="off"
-                {% if errors.get('location') %}aria-invalid="true" aria-describedby="location-error"{% endif %}>
+                placeholder="City, neighborhood, postcode, or address" maxlength="200" required autocomplete="off" spellcheck="false"
+                {% if geography_enabled %}role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="location-suggestions"{% endif %}
+                aria-describedby="location-search-status{% if errors.get('location') %} location-error{% endif %}"
+                {% if errors.get('location') %}aria-invalid="true"{% endif %}>
+            <button class="icon-button clear-location" type="button" id="clear-location" aria-label="Clear location" title="Clear location" hidden>{{ icon('x') }}</button>
         </div>
+        <div class="suggestions-popover" id="suggestions-popover" hidden>
+            <ul id="location-suggestions" role="listbox" aria-label="Location suggestions"></ul>
+            <p class="search-attribution" id="search-attribution"></p>
+        </div>
+        <p class="search-status" id="location-search-status" role="status" aria-live="polite">{% if geographic_location %}Real location data selected{% elif geography_enabled %}No location selected{% else %}Location search is unconfigured; demo analysis is available{% endif %}</p>
         {% if errors.get('location') %}<p class="field-error" id="location-error" role="alert">{{ errors.location }}</p>{% endif %}
     </div>
     <div class="form-field">
@@ -29,4 +40,6 @@
     <button class="analyze-button" type="submit" data-submit-button>
         {{ icon('scan-search') }}<span data-submit-label>Analyze Location</span>
     </button>
+    <button class="demo-fallback" type="submit" name="demo_only" value="1" data-demo-fallback {% if not geography_error %}hidden{% endif %}>Analyze demo only</button>
+    <noscript><p class="search-status">JavaScript is unavailable. The map and autocomplete are unavailable; submitted locations can still be resolved on the server.</p></noscript>
 </form>

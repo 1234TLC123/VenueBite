@@ -4,7 +4,7 @@
 {% if report.data.is_demo %}
 <div class="demo-notice">
     {{ icon('flask-conical') }}
-    <p><strong>Demo data only.</strong> Scores, metrics, restaurants, and distances are fictional. All searches use the same sample dataset.</p>
+    <p><strong>Demo market analysis.</strong> Demo data only: scores, market metrics, restaurants, and competition distances are fictional. All searches use the same sample dataset.</p>
 </div>
 {% endif %}
 
@@ -17,17 +17,7 @@
 </div>
 
 <div class="analysis-grid">
-    <section class="location-section" aria-labelledby="location-heading">
-        <div class="section-heading"><h2 id="location-heading">Location context</h2><span class="small-label">LIVE MAP PENDING</span></div>
-        <div class="map-placeholder">
-            <span class="map-symbol">{{ icon('map', 'large-icon') }}</span>
-            <h3>{{ report.data.location }}</h3>
-            <p>{{ report.data.concept }}</p>
-            <span class="map-status">{{ icon('circle-dashed') }}Live map data will be added later</span>
-        </div>
-        <div class="location-metadata"><span>{{ icon('map-pin') }}Submitted location</span><strong>{{ report.data.location }}</strong></div>
-        <div class="location-metadata"><span>{{ icon('utensils') }}Restaurant concept</span><strong>{{ report.data.concept }}</strong></div>
-    </section>
+    {% include '_map_workspace.html' %}
 
     <section class="score-section" aria-labelledby="score-heading">
         <div class="section-heading"><h2 id="score-heading">Opportunity score</h2><span class="small-label">{{ report.data.source_label }}</span></div>

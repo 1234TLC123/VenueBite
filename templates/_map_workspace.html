@@ -1,0 +1,27 @@
+<section class="location-section map-section" aria-labelledby="location-heading">
+    <div class="section-heading map-heading">
+        <div><p class="eyebrow">GEOGRAPHIC EXPLORER</p><h2 id="location-heading">Location context</h2></div>
+        <div class="map-tools">
+            <div class="map-modes" role="group" aria-label="Map style">
+                <button type="button" data-map-style="standard" aria-pressed="true" disabled>{{ icon('map') }}<span>Map</span></button>
+                <button type="button" data-map-style="satellite" aria-pressed="false" disabled>{{ icon('satellite') }}<span>Satellite</span></button>
+            </div>
+            <button type="button" class="icon-button" id="recenter-map" aria-label="Center selected location" title="Center selected location" disabled>{{ icon('locate-fixed') }}</button>
+        </div>
+    </div>
+    <div class="map-frame" id="map-frame" {% if geographic_location %}data-initial-location='{{ geographic_location.to_dict()|tojson }}'{% endif %}>
+        <div id="location-map" aria-label="Interactive location map"></div>
+        <div class="map-overlay" id="map-overlay" role="status" aria-live="polite">
+            <span class="map-symbol">{{ icon('map', 'large-icon') }}</span>
+            <h3 id="map-state-title">{% if map_enabled %}Loading geographic view{% else %}Mapbox is not configured{% endif %}</h3>
+            <p id="map-state-message">{% if map_enabled %}Connecting to Mapbox{% else %}{{ map_configuration_message }}{% endif %}</p>
+            {% if not map_enabled %}<span class="map-status">Live map data will be added later once Mapbox is configured.</span>{% endif %}
+            <button type="button" class="map-retry" id="retry-map" hidden>Retry map</button>
+        </div>
+    </div>
+    <div class="map-location-summary">
+        <span class="location-pin">{{ icon('map-pin') }}</span>
+        <div><h3 id="selected-location-name">{% if geographic_location %}{{ geographic_location.display_name }}{% else %}No resolved location{% endif %}</h3><p id="selected-location-coordinates">{% if geographic_location %}{{ '%.5f'|format(geographic_location.latitude) }}, {{ '%.5f'|format(geographic_location.longitude) }}{% else %}Geographic coordinates unavailable{% endif %}</p></div>
+        <span class="geo-badge" id="geographic-data-badge" {% if not geographic_location %}hidden{% endif %}>Real location data</span>
+    </div>
+</section>
