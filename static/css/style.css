@@ -242,6 +242,18 @@ td:nth-child(3), td:nth-child(4) { white-space: nowrap; }
 .empty-overview .small-label { margin-left: auto; }
 .app-footer { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; padding: 20px 36px; border-top: 1px solid var(--line); font-size: 10px; color: var(--muted); }
 .footer-divider { padding: 0 8px; color: var(--muted); }
+.metric-source { display: block; color: var(--muted); font-size: 10px; margin-bottom: 8px; }
+.metric-source.real-source { color: var(--green); }
+.census-context { padding: 14px 0 18px; margin-bottom: 20px; border-bottom: 1px solid var(--line); font-size: 12px; overflow-wrap: anywhere; }
+.census-heading { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 10px; }
+.census-heading h3 { display: flex; align-items: center; gap: 7px; font-size: 13px; }
+.census-metadata { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 24px; margin: 12px 0; }
+.census-metadata dt { color: var(--muted); font-size: 10px; margin-bottom: 3px; }
+.census-metadata dd { margin: 0; }
+.census-uncertainty { color: var(--muted); margin-top: 8px; }
+.census-unavailable { color: var(--amber); margin: 8px 0; }
+.factor-context { color: var(--muted); font-size: 10px; }
+@media (max-width: 480px) { .census-metadata { grid-template-columns: 1fr; } }
 @media (min-width: 1500px) { .app-header { padding-inline: max(36px, calc((100vw - 1408px) / 2)); } }
 @media (max-width: 1100px) {
   .app-header { gap: 28px; padding-inline: 24px; }

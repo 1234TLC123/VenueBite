@@ -12,12 +12,12 @@ MOCK_FACTOR_SCORES = MappingProxyType({
     "competition": 60,
 })
 MOCK_AREA_INSIGHTS = (
-    AreaInsight("Population", "184,500", "Sample area population", "users"),
-    AreaInsight("Median household income", "$72,400", "Sample annual income", "wallet"),
-    AreaInsight("Population growth", "+1.8%", "Sample annual change", "trending-up"),
-    AreaInsight("Commercial asking rent", "$28 / sq ft", "Sample annual base rent", "building-2"),
-    AreaInsight("Nearby businesses", "142", "Sample business count", "store"),
-    AreaInsight("Schools & universities", "8", "Sample institution count", "graduation-cap"),
+    AreaInsight("Population", "184,500", "Sample area population", "users", key="population"),
+    AreaInsight("Median household income", "$72,400", "Sample annual income", "wallet", key="income"),
+    AreaInsight("Population growth", "+1.8%", "Sample annual change", "trending-up", key="population_growth"),
+    AreaInsight("Commercial asking rent", "$28 / sq ft", "Sample annual base rent", "building-2", key="commercial_rent"),
+    AreaInsight("Nearby businesses", "142", "Sample business count", "store", key="businesses"),
+    AreaInsight("Schools & universities", "8", "Sample institution count", "graduation-cap", key="schools"),
 )
 MOCK_COMPETITORS = (
     Competitor("Sample Kitchen 01", "Central African", "0.4 mi", "$$"),

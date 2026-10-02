@@ -7,13 +7,16 @@ from dotenv import load_dotenv
 
 from venuebite.providers.mapbox_provider import MapboxLocationProvider, public_token
 from venuebite.providers.mapbox_poi_provider import MapboxPoiProvider
+from venuebite.providers.census_provider import CensusGeoProvider, CensusDemographicProvider
 from venuebite.distance import ALLOWED_RADIUS_MILES, DEFAULT_RADIUS_MILES
 from venuebite.services.competition_service import CompetitionService
+from venuebite.services.demographic_service import DemographicService
 from venuebite.services.geography_service import GeographyService
 from venuebite.services.mock_data_service import MockLocationDataService
 
 
-def create_app(config=None, *, data_provider=None, location_provider=None, poi_provider=None):
+def create_app(config=None, *, data_provider=None, location_provider=None, poi_provider=None,
+               census_geo_provider=None, demographic_provider=None):
     root = Path(__file__).resolve().parent.parent
     if not (config and config.get("TESTING")):
         load_dotenv(root / ".env", override=False)
@@ -30,11 +33,15 @@ def create_app(config=None, *, data_provider=None, location_provider=None, poi_p
         MAPBOX_REQUEST_ORIGIN=os.environ.get("MAPBOX_REQUEST_ORIGIN", ""),
         MAPBOX_HTTP_TIMEOUT_SECONDS=os.environ.get("MAPBOX_HTTP_TIMEOUT_SECONDS", 6),
         COMPETITION_RADIUS_MILES=os.environ.get("COMPETITION_RADIUS_MILES", DEFAULT_RADIUS_MILES),
+        CENSUS_API_KEY=os.environ.get("CENSUS_API_KEY", ""),
+        CENSUS_HTTP_TIMEOUT_SECONDS=os.environ.get("CENSUS_HTTP_TIMEOUT_SECONDS", 8),
     )
     if config:
         app.config.update(config)
     if app.testing and "MAPBOX_ACCESS_TOKEN" not in (config or {}):
         app.config["MAPBOX_ACCESS_TOKEN"] = ""
+    if app.testing and "CENSUS_API_KEY" not in (config or {}):
+        app.config["CENSUS_API_KEY"] = ""
     try:
         default_radius = int(str(app.config["COMPETITION_RADIUS_MILES"]))
     except (ValueError, TypeError):
@@ -56,6 +63,12 @@ def create_app(config=None, *, data_provider=None, location_provider=None, poi_p
         request_origin=app.config["MAPBOX_REQUEST_ORIGIN"], timeout=app.config["MAPBOX_HTTP_TIMEOUT_SECONDS"],
     )
     app.extensions["competition_service"] = CompetitionService(restaurant_provider)
+    app.extensions["demographic_service"] = DemographicService(
+        census_geo_provider if census_geo_provider is not None else CensusGeoProvider(app.config["CENSUS_HTTP_TIMEOUT_SECONDS"]),
+        demographic_provider if demographic_provider is not None else CensusDemographicProvider(
+            app.config["CENSUS_API_KEY"], timeout=app.config["CENSUS_HTTP_TIMEOUT_SECONDS"],
+        ),
+    )
 
     @app.context_processor
     def geography_context():

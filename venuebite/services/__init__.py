@@ -9,6 +9,8 @@ class AreaInsight:
     value: str
     detail: str
     icon: str
+    status: str = "demo"
+    key: str = ""
 
 
 @dataclass(frozen=True)

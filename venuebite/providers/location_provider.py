@@ -71,6 +71,7 @@ class GeographicLocation:
     provider: str
     provider_id: str
     bbox: tuple[float, float, float, float] | None = None
+    country_code: str | None = None
 
     def __post_init__(self):
         latitude, longitude = validate_coordinates(self.latitude, self.longitude)
@@ -81,9 +82,16 @@ class GeographicLocation:
             raise LocationError("The location provider returned invalid data.", code="invalid_response", status=502)
         object.__setattr__(self, "latitude", latitude)
         object.__setattr__(self, "longitude", longitude)
+        if self.country_code is not None:
+            if not isinstance(self.country_code, str) or not re.fullmatch(r"[A-Za-z]{2}", self.country_code):
+                raise LocationError("The location provider returned invalid country data.", code="invalid_response", status=502)
+            object.__setattr__(self, "country_code", self.country_code.lower())
 
     def to_dict(self):
-        return asdict(self)
+        result = asdict(self)
+        if self.country_code is None:
+            result.pop("country_code")
+        return result
 
 
 class GeographicLocationProvider(Protocol):

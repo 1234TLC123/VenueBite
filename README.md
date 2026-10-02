@@ -1,13 +1,14 @@
 # VenueBite
 
-VenueBite is a restaurant location-intelligence learning project built with Flask, Jinja, and vanilla JavaScript. Sprint 03 adds live nearby restaurants, concept matching, competitor markers, and a real-derived competition factor to the existing geographic explorer and weighted scoring engine.
+VenueBite is a restaurant location-intelligence application built with Flask, Jinja, and vanilla JavaScript. Sprint 04 adds official Census tract population and median household income to Sprint 03 competition intelligence and the existing geographic explorer. Commercial rent remains demo; scores remain unvalidated heuristics.
 
 ## Current Features
 
 - Geographic autocomplete for cities, neighborhoods, postcodes, landmarks, streets, and addresses, with keyboard and mouse selection.
 - Real coordinates, a candidate-location marker, zoom controls, recentering, smooth camera transitions, and standard/satellite map modes.
 - A responsive charcoal dashboard with the map beside the opportunity score on desktop and stacked content on mobile.
-- Restaurant concept submission, a 1/3/5 mile radius, the existing weighted score, factor bars, classifications, strengths, risks, and demo area insights.
+- Restaurant concept submission, a 1/3/5 mile competition radius, the existing weighted score, factor bars, classifications, strengths, risks, and individually labeled area insights.
+- Coordinate-to-tract Census lookup and 2024 ACS 5-year estimates, margins of error, geography identifiers, vintage, and independent population/income context scores.
 - Request-scoped Mapbox restaurant discovery, direct/general matching, straight-line distances, observed-sample metrics, deterministic competition explanations, and distinct map markers with safe popups.
 - Hybrid analysis on live success; transparent demo-score fallback on live failure. Editing location, concept, or radius immediately invalidates the previous report and restaurant markers.
 - Loading, empty, error, retry, and missing-configuration states; explicit demo-only fallback when geographic search fails.
@@ -23,13 +24,17 @@ VenueBite is a restaurant location-intelligence learning project built with Flas
 | Location, coordinates, map imagery | Real Mapbox geography when configured |
 | Nearby restaurant sample and distances | Live Mapbox POIs; VenueBite computes distances |
 | Competition factor | Real-derived heuristic on successful live retrieval |
-| Population / income / rent factors | Demo fixture: 85 / 80 / 55 |
-| Area insights, businesses, schools, growth, rent metrics | Fictional demo data |
-| Overall opportunity score | Hybrid: three demo factors plus real-derived competition |
+| Population / income estimates | Official 2024 ACS 5-year tract estimates when available |
+| Population / income factors | Real-derived Population / Income Model v1; individually demo fallback (85 / 80) if unavailable |
+| Commercial rent / occupancy factor and metric | Fictional demo fixture: score 55; $28/sq ft annual base rent |
+| Observed restaurant count | Live capped Mapbox sample, not all nearby businesses |
+| Schools / universities | Fictional demo fixture, individually labeled |
+| Population growth | Unavailable for geographic analysis; not fabricated |
+| Overall opportunity score | Hybrid: available real-derived factors plus explicitly demo factors |
 
-Missing geography/configuration or explicit demo-only analysis preserves the original fixture (competition 60; overall 72.5) and its clearly fictional restaurant list. If geography works but POI discovery fails, the UI says **Demo analysis - live competition unavailable**, retains that demo score, and shows no fake restaurant results or competitor markers. A broad area's marker is a representative point, not a verified rentable site.
+Missing geography/configuration or explicit demo-only analysis preserves the original fixture (85/80/55/60; overall 72.5), including clearly fictional area metrics and restaurant records. Geographic analysis never substitutes mock raw Census metrics or mock POIs for failed live retrieval. Each unavailable Census factor independently retains its demo score, while its raw metric says unavailable. If competition fails, its score alone falls back to 60; available Census scores still apply. If Census and competition both fail, the four-factor score is demo 72.5. A broad area's marker is a representative point, not a verified rentable site.
 
-The opportunity score is not a prediction or guarantee of business success. Weights, classifications, and insight thresholds are learning-project assumptions, not scientifically validated findings.
+The opportunity score is not a prediction or guarantee of business success. Weights, classifications, and normalization thresholds are product assumptions, not scientifically validated findings.
 
 ## Installation
 
@@ -80,6 +85,12 @@ A public Mapbox token is intentionally visible to the browser via `/api/map-conf
 
 **No Mapbox credentials are required for demo analysis or tests.** Missing or invalid configuration shows a clear map-area message while Flask and the original analysis continue to work.
 
+## Census Setup
+
+Set `CENSUS_API_KEY=your_census_api_key_here` in the server environment or ignored root `.env`, replacing only the placeholder locally. Request and activate a key using the official [Census key registration](https://api.census.gov/data/key_signup.html). Current Census documentation requires a key for all data queries; the geography lookup itself is public. Set optional `CENSUS_HTTP_TIMEOUT_SECONDS=8` (valid range above 0 through 30 seconds). Restart Flask after configuration changes. Never put this key in JavaScript, templates, screenshots, source control, or client configuration. `.env.example` contains placeholders only; shell environment values override `.env`.
+
+The ACS year, geography vintage, dataset, and variable IDs are centralized in `providers/demographic_provider.py`, not guessed or derived from the current date. Sprint 04 deliberately pins 2024. Before changing release years, reverify variables, supported geography, and compatible benchmark/vintage discovery. No new dependencies are required. Missing Census credentials do not disable maps or competition.
+
 ## Run
 
 ```powershell
@@ -87,7 +98,7 @@ A public Mapbox token is intentionally visible to the browser via `/api/map-conf
 python app.py
 ```
 
-Open <http://127.0.0.1:5000>. With Mapbox configured, select a geographic suggestion, choose a concept and radius, and analyze. The selected place updates the map before analysis; a successful report includes live competition. Editing the location clears the old selection but preserves the concept. Editing location, concept, or radius removes the stale report/competition markers. Without configuration, enter any location label and concept to run the clearly labeled demo.
+Open <http://127.0.0.1:5000>. With Mapbox configured, select a geographic suggestion, choose a concept and radius, and analyze. The selected place updates the map before analysis; a successful report includes live competition and Census context when configured. Editing the location clears the old selection but preserves the concept. Editing location, concept, or radius hides the entire stale report, clears Census GEOID/status metadata, and removes competitor markers. Without configuration, enter any location label and concept to run the clearly labeled demo.
 
 Use another port when 5000 is occupied:
 
@@ -106,7 +117,7 @@ git diff --check
 git status --short
 ```
 
-Tests retain all Sprint 01/02 coverage and add POI normalization, missing optional fields, HTTP/JSON failures, bounded endpoint-specific queries, deduplication, closed-business exclusion, Haversine checks, radius filtering, aliases, approximate matching, scoring extremes/monotonicity, hybrid rendering, and unavailable/empty states. External calls are mocked. Testing app instances skip `.env` and ignore the developer's Mapbox token unless explicitly configured in a test.
+Tests retain all 312 Sprint 01-03 tests and add Census geography/ACS normalization, independent partial results, sentinel/annotation handling, MOEs, safe HTTP/network/configuration failures, score anchors/interpolation/ranges, signed coordinate reuse, non-U.S. skips, provenance, and stale-report guards. External calls are mocked. Testing app instances skip `.env` and ignore developer Mapbox and Census credentials unless explicitly configured in a test.
 
 ## Architecture
 
@@ -117,6 +128,7 @@ venuebite/
     routes.py                       Form handling and geographic JSON endpoints
     scoring.py                      Existing weights, classifications, insights
     competition_scoring.py          Centralized Competition Model v1
+    demographic_scoring.py          Population / Income Model v1 anchors
     concepts.py                     Concept aliases, categories, matching rules
     distance.py                     Haversine meters, mile labels, search bbox
     providers/
@@ -124,9 +136,12 @@ venuebite/
         mapbox_provider.py          Mapbox HTTP adapter and response normalization
         poi_provider.py             Normalized POI contract and provider protocol
         mapbox_poi_provider.py       Bounded category/text searches and normalization
+        demographic_provider.py     Census contracts, verified release/variable constants
+        census_provider.py          Bounded Census geography and ACS adapters
     services/
         __init__.py                  Market-data contract
-        analysis_service.py         Demo factors + competition -> existing scoring
+        analysis_service.py         Independent factors, structured provenance, report
+        demographic_service.py      Eligibility, geography/ACS orchestration, fallback
         competition_service.py      Deduplication, filtering, matching, metrics
         mock_data_service.py        Immutable fictional market fixture
         geography_service.py        Signed selections and form resolution
@@ -135,6 +150,7 @@ templates/
     _search_form.html               Accessible search and concept form
     _map_workspace.html             Map surface, controls, location metadata
     _competition.html               Live metrics, explanation, sorted tables
+    _demographics.html              Tract source, vintage, coverage and MOEs
     index.html / results.html       Initial/error workspace and analysis report
 static/
     css/style.css                   Responsive dashboard and map styles
@@ -149,7 +165,7 @@ tests/                              Original and new mocked-provider coverage
 .env.example                        Configuration placeholders only
 ```
 
-`create_app(config=None, data_provider=..., location_provider=..., poi_provider=...)` supports independent provider substitution. Routes use services; templates consume normalized objects, never raw Mapbox JSON. The shared `MapboxSearchClient` owns HTTP transport, timeout, size limits, trusted Referer, and safe errors. `MapboxPoiProvider` normalizes external features; `CompetitionService` owns discovery analysis; `competition_scoring.py` owns competition scoring; the existing `scoring.py` still owns overall scoring.
+`create_app(config=None, data_provider=..., location_provider=..., poi_provider=..., census_geo_provider=..., demographic_provider=...)` supports independent provider substitution. Routes use services; templates consume normalized objects, never raw provider JSON. The shared `MapboxSearchClient` owns Mapbox transport; `MapboxPoiProvider` and `CompetitionService` preserve Sprint 03 discovery. Census adapters have a separate credential-safe transport. `competition_scoring.py` and `demographic_scoring.py` own factor normalization; the existing `scoring.py` still owns weighted overall scoring.
 
 Search uses Mapbox Search Box `/suggest` and `/retrieve` with the same UUID session token. After a successful retrieval, a new search session begins. The server signs the normalized selection with a 30-minute lifetime. Analysis validates that signature, location name, and any submitted coordinates, avoiding a second retrieve request. Without JavaScript, a normal form POST uses `/forward` to resolve the query on the server. A demo-only fallback bypasses lookup but never accepts unsigned client coordinates.
 
@@ -175,13 +191,46 @@ competition_score = round(100 / (1 + observed_pressure / 40), 1)
 
 The score is 0-100, with 100 for an empty sample. Higher pressure lowers the score; direct and closer matches matter more. Low observed pressure is score 75+, moderate 45+, high below 45. Named constants and the version are centralized. This is a transparent, unvalidated heuristic: sample caps, broad categories, and provider coverage affect comparisons. It does not measure actual market share, demand, business quality, or success probability. No AI is involved.
 
-### Overall Scoring Is Unchanged
+### Census Geography and Demographics
+
+Only an explicit Analyze submission runs Census. The verified/signed Mapbox point is reused: there is no Census address/name geocode, no request on autocomplete, map movement, recentering, or map-style changes. One request to `https://geocoding.geo.census.gov/geocoder/geographies/coordinates` sends `x=longitude`, `y=latitude`, `benchmark=Public_AR_Current`, `vintage=ACS2024_Current`, and `format=json`. Both names were verified against the official [benchmark](https://geocoding.geo.census.gov/geocoder/benchmarks) and [vintage discovery](https://geocoding.geo.census.gov/geocoder/vintages?benchmark=4) endpoints; coordinate semantics are documented in the [Geocoder API](https://geocoding.geo.census.gov/geocoder/Geocoding_Services_API.pdf).
+
+`CensusGeoProvider` normalizes two-digit state, three-digit county, six-digit tract FIPS, and their eleven-digit GEOID; the returned GEOID must match. County/state names are optional. `CensusDemographicProvider` then requests `https://api.census.gov/data/2024/acs/acs5` with `for=tract:<tract>` and `in=state:<state> county:<county>`, one combined `get`, and the private key. Returned geographic codes must exactly match the requested tract, preventing wrong or stale rows. Headers drive parsing, not column positions. Missing variables may produce partial results; malformed rows/headers/geography fail safely.
+
+Verified variables, including annotations, in official [B01003 metadata](https://api.census.gov/data/2024/acs/acs5/groups/B01003.html) and [B19013 metadata](https://api.census.gov/data/2024/acs/acs5/groups/B19013.html):
+
+- `B01003_001E`: total population estimate; `B01003_001M`: population margin of error.
+- `B19013_001E`: median household income in the past 12 months, in 2024 inflation-adjusted dollars; `B19013_001M`: its margin of error.
+- Each corresponding `EA`/`MA` annotation is retrieved in that same call, along with `NAME`.
+
+Nulls, empty/invalid values, negative sentinel codes, and annotated estimates are unavailable, never measurements. Open-ended income medians such as `250,000+` are not treated as exact medians or scored. A usable estimate remains usable when its MOE is missing/suppressed. Negative or annotated MOEs, including the controlled-estimate sentinel, are retained as unavailable with their annotations rather than shown as negative numbers or assumed zero. See [official annotation definitions](https://www.census.gov/data/developers/data-sets/acs-1year/notes-on-acs-estimate-and-annotation-values.html).
+
+The UI retains and displays available MOEs at the Census standard 90% confidence level. ACS is a survey and estimates can have substantial uncertainty, especially in small areas; MOEs do not impose an undocumented score penalty. This is a 2020-2024 pooled estimate, not a 2024-only count or a current headcount. The containing tract is a **local demographic proxy**, not a restaurant trade area, exact neighborhood, walking radius, demand estimate, or total addressable market. Competition radius never changes the tract or Census query.
+
+`DemographicService` centrally skips known non-U.S. country codes from signed Mapbox metadata. Coverage is the 50 states and DC. Unknown country metadata can be resolved authoritatively by the tract lookup; unsupported states/territories or no matching tract fail safely. Paris keeps real geography and available Mapbox POIs, but Census metrics are unavailable and demographic scores are explicitly demo fallback. No U.S. demographic values are passed off as Paris statistics.
+
+Each HTTP request has a bounded timeout and 1 MiB response limit. Redirects are rejected so credentials are never forwarded to another host. Authorization, rate limits, DNS/network/timeouts, empty results, and malformed data become application-owned messages. Logs contain only Census endpoint family and HTTP status, never URLs, raw errors, bodies, or keys. Missing keys skip both Census requests. Failure in either Census step preserves independent competition/map functionality. There is no response cache, persistence, retry loop, or extra per-variable request; two Census calls can take up to twice the configured timeout.
+
+Population growth is explicitly unavailable in geographic reports. Adjacent ACS 5-year releases overlap and are not used for growth. A future implementation needs non-overlapping periods (2015-2019 vs 2020-2024), verified comparable tract boundaries, and uncertainty-aware comparison. Pure demo-only reports retain the original explicitly fictional growth fixture. Residential ACS rent is never substituted for commercial asking rent.
+
+For a point on a shared tract boundary, Census can return multiple matches. The app explicitly reports ambiguity and does not choose an arbitrary tract or move the selected coordinates. Select a more specific address or landmark. This occurred live with Greeley's autocomplete city point; a different server-resolved Greeley point returned a single valid tract.
+
+### Population and Income Models v1
+
+Both models use deterministic piecewise-linear interpolation between centralized anchors, round to one decimal, and cap at 100. Missing values return unavailable, not zero. Negative, nonnumeric, boolean, and nonfinite input is rejected; genuine zero scores zero. Thresholds are transparent, uncalibrated application assumptions, not Census recommendations.
+
+- `population-v1` anchors (tract people -> score): 0 -> 0; 1,000 -> 25; 3,000 -> 60; 6,000 -> 85; 10,000+ -> 100. This measures population context only, not density, foot traffic, daytime population, demand, or customers. No unverified land area is used.
+- `income-v1` anchors (annual household dollars -> score): 0 -> 0; 25,000 -> 20; 50,000 -> 45; 75,000 -> 65; 100,000 -> 80; 150,000+ -> 100. Higher scores represent stronger household purchasing-power context, not disposable income, concept fit, or restaurant spending.
+
+Structured per-factor provenance includes status (`real`, `demo`, `fallback`), provider, vintage, GEOID, model version, description, and fallback reason. The banner, factor badges, area metric labels, and strength/risk explanations use this state rather than inferring source from label text. Rent and schools remain demo; nearby businesses are not falsely inferred from a restaurant-only sample.
+
+### Overall Scoring Weights Are Unchanged
 
 Population and income each weigh 30%; rent and competition each weigh 20%:
 
 ```text
-overall = 85 * 0.30 + 80 * 0.30 + 55 * 0.20 + competition_score * 0.20
-demo-only / unavailable competition: competition_score = 60; overall = 72.5
+overall = population_score * 0.30 + income_score * 0.30 + rent_score * 0.20 + competition_score * 0.20
+demo-only / all providers unavailable: 85 * .30 + 80 * .30 + 55 * .20 + 60 * .20 = 72.5
 ```
 
 Higher factor scores always mean better opportunity. A high rent score means more affordable occupancy costs; a high competition score means less direct competitive pressure. These normalized factors are not raw prices or restaurant counts. The displayed demo metrics do not feed a real normalization process.
@@ -192,7 +241,9 @@ Scores are rounded to one decimal before classification: Strong at 80+, Promisin
 
 - Search cities in different states (Miami, Chicago, Dallas, New York), postcode `10001`, a neighborhood, Times Square, and a complete address. Try intersections where supported. Verify names and coordinates, marker placement, and camera framing.
 - Select with mouse and with Arrow Up/Down + Enter; dismiss with Escape. Clear/change the place and confirm the concept stays intact and stale coordinates disappear. Normal analysis remains disabled until a suggestion is resolved.
-- Analyze Denver + Indian, Miami + Cuban, Chicago + pizza, New York + coffee, Greeley + Mexican, and Denver + Congolese. Verify selected name/coordinates, actual POIs, plausible straight-line distances, changing competition/overall scores, hybrid labels, and demo population/income/rent/area metrics. Do not hardcode business names.
+- Analyze Denver + Indian, Miami + Cuban, Chicago + pizza, New York + coffee, and Greeley + Mexican. Verify selected coordinates, correct tract/GEOID/state/county, actual Census estimates/MOEs/source/vintage, actual POIs, and varying factor/overall scores. Verify rent/schools remain demo, growth unavailable, and no old fictional population/income metrics appear. Do not hardcode business names or expect city-wide population at a selected point.
+- Analyze Paris, France: real geography and competition should continue where supported; Census should show U.S.-only unavailable coverage and explicitly demo demographic factors. Remove/disable only the Census key and restart: maps/competition should still work, Census scores should be fallback, and raw Census metrics unavailable.
+- Change location, concept, and radius independently after a report. Confirm score, all Census values/geography/source, competition metrics, and competitor markers disappear immediately. Submit a new analysis and confirm only the new point's tract/data return. Inspect browser source/network configuration to ensure no Census key or browser Census request appears.
 - Analyze Denver Union Station with Indian or Cuban: confirm exact selected landmark coordinates are used, category requests succeed, and both marker types/popups work. Change location/concept/radius and confirm previous results disappear immediately. Test 1/3/5 mile radii and cap/zero-result notices.
 - Switch Map/Satellite, use zoom and recenter, resize to tablet/mobile, and check attribution, controls, readable text, touch targets, and no horizontal page overflow.
 - Test reduced motion, keyboard-only navigation, no results, a disconnected network, an invalid public token, and map retry. Search failures should offer explicit demo-only analysis, not invented geographic results.
@@ -202,8 +253,8 @@ Scores are rounded to one decimal before classification: Strong at 80+, Promisin
 
 Live map/search/competition verification requires a Mapbox account, authorized public token, and network access. Map rendering also requires WebGL. Failures preserve geography where possible and explicitly demo scoring, not invented real results. Discovery is a capped, potentially incomplete provider sample; unsupported categories use approximate text matching. Provider data and scores can change between requests. No ratings, reviews, pricing, travel times, or opening-hours inference are used.
 
-Broad places resolve to representative points, not storefront availability. No real demographics, economics, property, zoning, traffic, demand, or business-success estimates are provided. There is **no persistent POI storage**, database, disk response cache, or browser localStorage. Provider results are processed per request and rendered as a temporary snapshot only, under Mapbox's temporary-use rules. Selections and analyses are not saved.
+Broad places resolve to representative points, not storefront availability. Official tract population/income estimates provide limited demographic context, not comprehensive market research. Tract size/boundaries, representative-point placement, high MOEs, group quarters, five-year pooling, POI coverage/caps, income caps, and uncalibrated scoring can materially affect comparisons. Values may change between releases and scores can saturate; differences are not claims of statistical significance. No real commercial property, zoning, traffic, demand, or business-success estimates are provided. There is **no persistent POI storage**, database, response cache, or browser localStorage. Provider results are processed per request and rendered as a temporary snapshot only. Selections and analyses are not saved.
 
-Next: trustworthy demographic/economic sources with provenance and coverage checks, then scoring calibration. Saved analyses and comparisons require provider-storage licensing review before persistence; accounts, Find an Area, AI explanations, deployment, and production hardening remain future work.
+Next: calibrate context scoring and evaluate trustworthy commercial property/economic sources. Growth needs comparable boundaries and non-overlapping periods. Saved analyses and comparisons require provider-storage licensing review before persistence; accounts, Find an Area, AI explanations, deployment, and production hardening remain future work.
 
 Icons are from [Lucide 0.468.0](https://github.com/lucide-icons/lucide/tree/0.468.0), with the license in `static/icons/LICENSE`. Maps and imagery retain Mapbox's built-in attribution.

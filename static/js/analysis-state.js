@@ -1,5 +1,9 @@
 export function invalidateAnalysis(message = "Analysis pending") {
   for (const output of document.querySelectorAll("[data-analysis-output]")) output.hidden = true;
+  for (const context of document.querySelectorAll("[data-census-status]")) {
+    delete context.dataset.censusGeoid;
+    context.dataset.censusStatus = "stale";
+  }
   const pending = document.querySelector("[data-analysis-pending]");
   if (pending) {
     pending.hidden = false;

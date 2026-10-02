@@ -4,10 +4,10 @@
 {% set live_competition = report.competition and report.competition.available %}
 <div class="demo-notice" data-analysis-output>
     {{ icon('flask-conical') }}
-    {% if live_competition %}
-    <p><strong>Hybrid analysis.</strong> Real geography and observed Mapbox competition; population, income, rent, and area insights remain demo. The opportunity score combines real-derived and fictional factors.</p>
+    {% if not report.data.is_demo and (report.competition or report.demographics) %}
+    <p><strong>Hybrid analysis.</strong> Real geography; {% for factor in report.score.factors %}{{ factor.label }}: {{ report.provenance[factor.key].label }}{% if not loop.last %}; {% else %}.{% endif %}{% endfor %} Commercial rent remains demo. The opportunity score combines real-derived and fictional factors.</p>
     {% elif report.competition %}
-    <p><strong>Demo market analysis - live competition unavailable.</strong> Demo data only: all four scores and area metrics are fictional. Real geography remains available; no live competitor results are shown.</p>
+    <p><strong>Demo market analysis - live competition unavailable.</strong> Demo data only: all four scores use fictional factors. Real geography remains available; no live competitor results are shown. Unavailable Census metrics are not replaced by fictional estimates.</p>
     {% else %}
     <p><strong>Demo market analysis.</strong> Demo data only: scores, market metrics, restaurants, and competition distances are fictional. All searches use the same sample dataset.</p>
     {% endif %}
@@ -25,7 +25,7 @@
     {% include '_map_workspace.html' %}
 
     <section class="empty-score analysis-pending" data-analysis-pending hidden aria-live="polite">
-        <h2>Analysis pending</h2><p class="section-caption">No current competition snapshot</p>
+        <h2>Analysis pending</h2><p class="section-caption">No current demographic or competition snapshot</p>
     </section>
     <section class="score-section" aria-labelledby="score-heading" data-analysis-output>
         <div class="section-heading"><h2 id="score-heading">Opportunity score</h2><span class="small-label">{{ report.data.source_label }}</span></div>
@@ -38,12 +38,14 @@
         </div>
         <div class="factor-grid">
             {% for factor in report.score.factors %}
+            {% set source = report.provenance[factor.key] %}
             <article class="factor-card {{ factor.signal }}">
                 <div class="factor-header"><h3>{{ icon(factor.icon) }}{{ factor.label }}</h3><span>{{ factor.weight_percent }}% weight</span></div>
-                <span class="factor-source {{ 'real-source' if factor.key == 'competition' and live_competition else '' }}">{{ 'Real observed data' if factor.key == 'competition' and live_competition else 'Demo data' }}</span>
+                <span class="factor-source {{ 'real-source' if source.real else '' }}">{{ source.label }}{% if source.status == 'fallback' %} (fallback){% endif %}</span>
                 <div class="factor-value">{{ '%g'|format(factor.score) }}<span>/ 100</span></div>
                 <meter min="0" max="100" value="{{ factor.score }}" aria-label="{{ factor.label }} score">{{ factor.score }}</meter>
-                <p>{% if factor.key == 'competition' and live_competition %}Higher scores mean lower observed pressure in a limited search sample.{% else %}{{ factor.description }}{% endif %}</p>
+                {% if source.vintage %}<p class="factor-context">ACS {{ source.vintage }} 5-year &middot; tract<br>{{ source.model_version }}</p>{% endif %}
+                <p>{% if source.real and factor.key in ('population', 'income') %}{{ source.description }}{% elif factor.key == 'competition' and live_competition %}Higher scores mean lower observed pressure in a limited search sample.{% else %}{{ factor.description }}{% endif %}</p>
             </article>
             {% endfor %}
         </div>
@@ -55,11 +57,13 @@
 </div>
 
 <section class="insights-section" aria-labelledby="insights-heading" data-analysis-output>
-    <div class="section-heading"><h2 id="insights-heading">Area insights</h2><span class="data-badge">Demo data</span></div>
+    <div class="section-heading"><h2 id="insights-heading">Area insights</h2><span class="data-badge">{{ 'Mixed sources' if report.demographics else 'Demo data' }}</span></div>
+    {% if report.demographics %}{% include '_demographics.html' %}{% endif %}
     <div class="metrics-grid">
         {% for insight in report.data.area_insights %}
         <article class="metric">
             <div class="metric-label">{{ icon(insight.icon) }}<h3>{{ insight.label }}</h3></div>
+            <span class="metric-source {{ 'real-source' if insight.status == 'real' else '' }}">{{ {'real': 'Real observed data' if insight.key == 'restaurants' else 'Real Census estimate', 'demo': 'Demo data', 'unavailable': 'Unavailable'}[insight.status] }}</span>
             <strong>{{ insight.value }}</strong><p>{{ insight.detail }}</p>
         </article>
         {% endfor %}
@@ -90,13 +94,13 @@
         <div class="assessment-group strengths">
             <h3>{{ icon('circle-check') }}Strengths</h3>
             {% for insight in report.score.strengths %}
-            <div class="assessment-item"><div><strong>{{ insight.label }}</strong><span>{{ '%g'|format(insight.score) }} / 100</span></div><p>{% if insight.label == 'Competition' and live_competition %}{{ report.competition.explanation }}{% else %}{{ insight.explanation }} (Demo factor){% endif %}</p></div>
+            <div class="assessment-item"><div><strong>{{ insight.label }}</strong><span>{{ '%g'|format(insight.score) }} / 100</span></div><p>{% if report.provenance[insight.key].real %}{{ report.provenance[insight.key].description }} ({{ report.provenance[insight.key].label }}){% else %}{{ insight.explanation }} (Demo factor){% endif %}</p></div>
             {% else %}<p class="section-caption">No factors meet the strength threshold.</p>{% endfor %}
         </div>
         <div class="assessment-group risks">
             <h3>{{ icon('triangle-alert') }}Risks</h3>
             {% for insight in report.score.risks %}
-            <div class="assessment-item"><div><strong>{{ insight.label }}</strong><span>{{ '%g'|format(insight.score) }} / 100</span></div><p>{% if insight.label == 'Competition' and live_competition %}{{ report.competition.explanation }}{% else %}{{ insight.explanation }} (Demo factor){% endif %}</p></div>
+            <div class="assessment-item"><div><strong>{{ insight.label }}</strong><span>{{ '%g'|format(insight.score) }} / 100</span></div><p>{% if report.provenance[insight.key].real %}{{ report.provenance[insight.key].description }} ({{ report.provenance[insight.key].label }}){% else %}{{ insight.explanation }} (Demo factor){% endif %}</p></div>
             {% else %}<p class="section-caption">No factors fall below the risk threshold.</p>{% endfor %}
         </div>
     </section>

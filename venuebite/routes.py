@@ -69,7 +69,10 @@ def home():
             longitude=geographic_location.longitude,
         )
 
-    service = AnalysisService(current_app.extensions["location_data_provider"], current_app.extensions["competition_service"])
+    service = AnalysisService(
+        current_app.extensions["location_data_provider"], current_app.extensions["competition_service"],
+        current_app.extensions["demographic_service"],
+    )
     try:
         report = service.analyze(
             values["location"], values["concept"],

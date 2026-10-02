@@ -70,6 +70,7 @@ class Insight:
     label: str
     score: float
     explanation: str
+    key: str = ""
 
 
 @dataclass(frozen=True)
@@ -128,9 +129,9 @@ def calculate_opportunity(factor_scores):
             icon=definition.icon,
         ))
         if signal == "strong":
-            strengths.append(Insight(definition.label, score, definition.strength))
+            strengths.append(Insight(definition.label, score, definition.strength, definition.key))
         elif signal == "watch":
-            risks.append(Insight(definition.label, score, definition.risk))
+            risks.append(Insight(definition.label, score, definition.risk, definition.key))
 
     overall = round(fsum(factor.score * factor.weight for factor in factors), 1)
     classification, classification_key = classify_score(overall)

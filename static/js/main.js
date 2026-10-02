@@ -22,7 +22,7 @@ if (form && submitButton && submitLabel) {
     submitButton.disabled = true;
     submitButton.classList.add("is-loading");
     submitLabel.textContent = "Analyzing...";
-    const message = demoOnly || form.dataset.geographyEnabled !== "true" ? "Analyzing demo data..." : "Retrieving nearby competition...";
+    const message = demoOnly || form.dataset.geographyEnabled !== "true" ? "Analyzing demo data..." : "Retrieving Census and nearby competition...";
     invalidateAnalysis(message);
     const progress = document.querySelector("[data-analysis-progress]");
     progress.textContent = message;

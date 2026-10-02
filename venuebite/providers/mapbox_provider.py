@@ -158,10 +158,15 @@ class MapboxLocationProvider(MapboxSearchClient):
         place_type = properties.get("feature_type")
         if place_type not in FEATURE_TYPES.split(","):
             raise ValueError("Invalid location type")
+        context = properties.get("context")
+        country = context.get("country") if isinstance(context, dict) else None
+        country_code = country.get("country_code") if isinstance(country, dict) else None
+        if not isinstance(country_code, str) or len(country_code) != 2 or not country_code.isascii() or not country_code.isalpha():
+            country_code = None
         return GeographicLocation(
             display_name=_display_name(properties), latitude=latitude, longitude=longitude,
             place_type=place_type, provider="mapbox",
-            provider_id=validate_identifier(properties.get("mapbox_id")), bbox=normalized_bbox,
+            provider_id=validate_identifier(properties.get("mapbox_id")), bbox=normalized_bbox, country_code=country_code,
         )
 
     def _location_from_response(self, payload):
