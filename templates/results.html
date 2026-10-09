@@ -2,130 +2,69 @@
 {% block title %}{{ report.data.location }}{% endblock %}
 {% block content %}
 {% set live_competition = report.competition and report.competition.available %}
-<div class="demo-notice" data-analysis-output>
-    {{ icon('flask-conical') }}
-    {% if not report.data.is_demo and (report.competition or report.demographics) %}
-    <p><strong>Hybrid analysis.</strong> Real geography; {% for factor in report.score.factors %}{{ factor.label }}: {{ report.provenance[factor.key].label }}{% if not loop.last %}; {% else %}.{% endif %}{% endfor %} Commercial rent remains demo. The opportunity score combines real-derived and fictional factors.</p>
-    {% elif report.competition %}
-    <p><strong>Demo market analysis - live competition unavailable.</strong> Demo data only: all four scores use fictional factors. Real geography remains available; no live competitor results are shown. Unavailable Census metrics are not replaced by fictional estimates.</p>
-    {% else %}
-    <p><strong>Demo market analysis.</strong> Demo data only: scores, market metrics, restaurants, and competition distances are fictional. All searches use the same sample dataset.</p>
-    {% endif %}
-</div>
-
 <div class="report-heading" data-analysis-output>
     <div class="report-title">
         {{ icon('map-pin') }}
-        <div><h2>{{ report.data.location }}</h2><p>{{ report.data.concept }}</p></div>
+        <div><p class="eyebrow">LIVE ANALYSIS</p><h2 data-report-start tabindex="-1">{{ report.data.location }}</h2><p>{{ report.data.concept }} &middot; {{ values.get('radius_miles', default_radius_miles) }} mi radius</p></div>
     </div>
     <span class="data-badge">{{ report.data.source_label }}</span>
 </div>
-
+{% if snapshot_token %}{% include '_save_site.html' %}{% elif save_unavailable %}<p class="snapshot-notice" data-analysis-output>{{ save_unavailable }}</p>{% endif %}
+<div class="report-toolbar" data-analysis-output>
+<div class="demo-notice">
+    {{ icon('info') }}
+    <div>
+    {% if not report.data.is_demo %}
+        <p><strong>Hybrid analysis.</strong> {% if report.occupancy and report.occupancy.supported %}Commercial terms are user-supplied, not independently verified.{% else %}Commercial rent remains demo.{% endif %}</p>
+    {% elif report.competition %}
+        <p><strong>Demo market analysis - live competition unavailable.</strong> Demo data only: scores are fictional. Unavailable Census estimates are not replaced with invented raw metrics.</p>
+    {% else %}
+        <p><strong>Demo market analysis.</strong> Demo data only: scores, market metrics, restaurants, and competition distances are fictional. All searches use the same sample dataset.</p>
+    {% endif %}
+        <details><summary>Factor evidence</summary><p>{% if geographic_location %}Real geography. {% endif %}{% for factor in report.score.factors %}{{ factor.label }}: {{ report.provenance[factor.key].label }}{% if not loop.last %}; {% else %}.{% endif %}{% endfor %}</p></details>
+    </div>
+</div>
+<nav class="report-nav" aria-label="Report sections">
+    <a href="#score-heading">Overview</a><a href="#factor-heading">Factors</a><a href="#insights-heading">Market context</a><a href="#site-heading" {% if not report.site %}hidden{% endif %}>Site</a>{% if report.occupancy %}<a href="#occupancy-heading">Occupancy</a>{% endif %}
+</nav>
+</div>
 <div class="analysis-grid">
+    <section class="empty-score analysis-pending" data-analysis-pending hidden aria-live="polite"><span class="ready-symbol">{{ icon('scan-search') }}</span><h2>Analysis pending</h2><p class="section-caption">No current demographic or competition snapshot</p></section>
+    {% include '_score_overview.html' %}
     {% include '_map_workspace.html' %}
-
-    <section class="empty-score analysis-pending" data-analysis-pending hidden aria-live="polite">
-        <h2>Analysis pending</h2><p class="section-caption">No current demographic or competition snapshot</p>
-    </section>
-    <section class="score-section" aria-labelledby="score-heading" data-analysis-output>
-        <div class="section-heading"><h2 id="score-heading">Opportunity score</h2><span class="small-label score-model">{{ report.score.model_label }}</span></div>
-        <div class="score-summary">
-            <div class="score-value">{{ '%.1f'|format(report.score.overall_score) }}<span>/ 100</span></div>
-            <div class="score-classification">
-                <span class="classification {{ report.score.classification_key }}">{{ report.score.classification }}</span>
-                <p>Weighted opportunity model<br>Not a prediction of business success</p>
-            </div>
-        </div>
-        <div class="data-coverage" aria-labelledby="coverage-heading">
-            <div class="coverage-heading"><h3 id="coverage-heading">Data Coverage</h3><strong>{{ '%g'|format(report.coverage.percent) }}%</strong></div>
-            <meter min="0" max="100" value="{{ report.coverage.percent }}" aria-label="Real usable model data coverage, percent">{{ report.coverage.percent }}%</meter>
-            <p>{{ report.coverage.label }} &middot; Real usable model support, not success probability.</p>
-            {% if report.coverage.warning %}<p class="coverage-warning">{{ icon('triangle-alert') }}{{ report.coverage.warning }}</p>{% endif %}
-        </div>
-        <p class="score-explanation">{{ report.explanations.summary }}</p>
-        <div class="factor-grid">
-            {% for factor in report.score.factors %}
-            {% set source = report.provenance[factor.key] %}
-            <article class="factor-card {{ factor.signal }}">
-                <div class="factor-header"><h3>{{ icon(factor.icon) }}{{ factor.label }}</h3><span>{{ factor.weight_percent }}% weight</span></div>
-                <span class="factor-source {{ 'real-source' if source.real else '' }}">{{ source.label }}{% if source.status == 'fallback' %} (fallback){% endif %}</span>
-                <div class="factor-value">{{ '%g'|format(factor.score) }}<span>/ 100</span></div>
-                <meter min="0" max="100" value="{{ factor.score }}" aria-label="{{ factor.label }} score">{{ factor.score }}</meter>
-                <div class="factor-contribution"><span>Contribution</span><strong>{{ factor.weighted_points_label }} points</strong></div>
-                <details class="factor-details">
-                    <summary>Source &amp; model<span class="sr-only"> for {{ factor.label }}</span></summary>
-                    <p>{{ source.provider }}{% if source.vintage %} &middot; ACS {{ source.vintage }} 5-year &middot; tract{% endif %}{% if source.model_version %}<br>{{ source.model_version }}{% endif %}</p>
-                    {% if source.geoid %}<p>GEOID {{ source.geoid }}</p>{% endif %}
-                    <p>{% if source.real and factor.key in ('population', 'income') %}{{ source.description }}{% elif factor.key == 'competition' and live_competition %}Higher scores mean lower observed pressure in a limited search sample.{% else %}{{ factor.description }}{% endif %}</p>
-                    {% if source.reason %}<p>{{ source.reason }}</p>{% endif %}
-                    {% if factor.key == 'rent' %}<p>Commercial rent remains demo; verify live occupancy costs.</p>{% endif %}
-                </details>
+</div>
+{% include '_factor_intelligence.html' %}
+{% include '_strengths_risks.html' %}
+<div class="market-grid" data-analysis-output>
+    <section class="insights-section" aria-labelledby="insights-heading" data-analysis-output>
+        <div class="section-heading"><div><p class="eyebrow">DEMOGRAPHIC INTELLIGENCE</p><h2 id="insights-heading">Area insights</h2></div><span class="data-badge">{{ 'Mixed sources' if report.demographics else 'Demo data' }}</span></div>
+        <div class="metrics-grid">
+            {% for insight in report.data.area_insights %}
+            <article class="metric metric-{{ insight.key }}">
+                <div class="metric-label">{{ icon(insight.icon) }}<h3>{{ insight.label }}</h3></div>
+                <strong>{{ insight.value }}</strong>
+                <span class="metric-source evidence-{{ insight.status }} {{ 'real-source' if insight.status == 'real' else '' }}">{{ {'real': 'Real observed data' if insight.key == 'restaurants' else 'Real Census estimate', 'demo': 'Demo data', 'unavailable': 'Unavailable'}[insight.status] }}</span>
+                <p>{{ insight.detail }}</p>
             </article>
             {% endfor %}
         </div>
-        <details class="model-details">
-            <summary>{{ icon('info') }}Scoring assumptions</summary>
-            <p>{{ report.explanations.assumptions }}</p>
-        </details>
-        <details class="model-details quality-details">
-            <summary>{{ icon('info') }}Evidence &amp; data quality</summary>
-            <p>Coverage credits real factors fully, explicit partial factors halfway, and demo, fallback or unavailable factors not at all. Missing Census estimates reduce only their own factor coverage.</p>
-            <ul>{% for item in report.coverage.factors %}<li>{{ report.score.factors[loop.index0].label }}: {{ item.status }} &middot; {{ '%g'|format(item.coverage_points) }} coverage points</li>{% endfor %}</ul>
-            {% for note in report.explanations.quality_notes %}<p>{{ note }}</p>{% endfor %}
-        </details>
+        {% if report.demographics %}{% include '_demographics.html' %}{% endif %}
     </section>
-</div>
-
-{% if report.site %}{% include '_site_intelligence.html' %}{% endif %}
-
-<section class="insights-section" aria-labelledby="insights-heading" data-analysis-output>
-    <div class="section-heading"><h2 id="insights-heading">Area insights</h2><span class="data-badge">{{ 'Mixed sources' if report.demographics else 'Demo data' }}</span></div>
-    {% if report.demographics %}{% include '_demographics.html' %}{% endif %}
-    <div class="metrics-grid">
-        {% for insight in report.data.area_insights %}
-        <article class="metric">
-            <div class="metric-label">{{ icon(insight.icon) }}<h3>{{ insight.label }}</h3></div>
-            <span class="metric-source {{ 'real-source' if insight.status == 'real' else '' }}">{{ {'real': 'Real observed data' if insight.key == 'restaurants' else 'Real Census estimate', 'demo': 'Demo data', 'unavailable': 'Unavailable'}[insight.status] }}</span>
-            <strong>{{ insight.value }}</strong><p>{{ insight.detail }}</p>
-        </article>
-        {% endfor %}
-    </div>
-</section>
-
-<div class="lower-grid" data-analysis-output>
     {% if report.competition %}
-    {% include '_competition.html' %}
+        {% include '_competition.html' %}
     {% else %}
     <section class="competition-section" aria-labelledby="competition-heading">
-        <div class="section-heading"><h2 id="competition-heading">Nearby competition</h2><span class="data-badge">{{ report.data.source_label }}</span></div>
-        {% if report.data.is_demo %}<p class="section-caption">Fictional restaurant records and sample distances.</p>{% endif %}
+        <div class="section-heading"><div><p class="eyebrow">COMPETITION INTELLIGENCE</p><h2 id="competition-heading">Nearby competition</h2></div><span class="data-badge">Demo data</span></div>
+        <p class="section-caption">Fictional restaurant records and sample distances.</p>
         <div class="table-scroll" role="region" aria-label="Demo nearby restaurants" tabindex="0">
-            <table>
-                <thead><tr><th scope="col">Restaurant</th><th scope="col">Concept</th><th scope="col">Distance</th><th scope="col">Price</th></tr></thead>
-                <tbody>
-                {% for competitor in report.data.competitors %}
-                <tr><th scope="row"><span class="restaurant-name">{{ icon('store') }}{{ competitor.name }}</span></th><td>{{ competitor.concept }}</td><td>{{ competitor.distance }}</td><td>{{ competitor.price }}</td></tr>
-                {% endfor %}
-                </tbody>
-            </table>
+            <table><thead><tr><th scope="col">Restaurant</th><th scope="col">Concept</th><th scope="col">Distance</th><th scope="col">Price</th></tr></thead>
+            <tbody>{% for competitor in report.data.competitors %}<tr><th scope="row"><span class="restaurant-name">{{ icon('store') }}{{ competitor.name }}</span></th><td>{{ competitor.concept }}</td><td>{{ competitor.distance }}</td><td>{{ competitor.price }}</td></tr>{% endfor %}</tbody></table>
         </div>
     </section>
     {% endif %}
-    <section class="assessment-section" aria-labelledby="assessment-heading">
-        <div class="section-heading"><h2 id="assessment-heading">Strengths & risks</h2><span class="small-label">{{ report.data.source_label }}</span></div>
-        <div class="assessment-group strengths">
-            <h3>{{ icon('circle-check') }}Strengths</h3>
-            {% for insight in report.explanations.strengths %}
-            <div class="assessment-item"><div><strong>{{ insight.label }}</strong><span>{{ '%g'|format(insight.score) }} / 100</span></div><p>{{ insight.explanation }}</p></div>
-            {% else %}<p class="section-caption">No fully real-data factors meet the strength threshold.</p>{% endfor %}
-        </div>
-        <div class="assessment-group risks">
-            <h3>{{ icon('triangle-alert') }}Risks</h3>
-            {% for insight in report.explanations.risks %}
-            <div class="assessment-item"><div><strong>{{ insight.label }}{% if insight.status != 'real' %} &middot; verify data{% endif %}</strong><span>{{ '%g'|format(insight.score) }} / 100</span></div><p>{{ insight.explanation }}</p></div>
-            {% endfor %}
-            {% if report.explanations.no_numeric_risks %}<p class="section-caption">No factors fall below the risk threshold.{% if report.explanations.risks %} Evidence or proximity risks still require verification.{% endif %}</p>{% endif %}
-        </div>
-    </section>
+</div>
+<div class="property-grid" data-analysis-output>
+    {% if report.site %}{% include '_site_intelligence.html' %}{% endif %}
+    {% if report.occupancy %}{% include '_occupancy.html' %}{% endif %}
 </div>
 {% endblock %}

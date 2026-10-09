@@ -1,6 +1,6 @@
 # VenueBite
 
-VenueBite is a restaurant location-intelligence application built with Flask, Jinja, and vanilla JavaScript. Sprint 06 adds request-scoped Regrid parcel/site context and boundaries alongside the existing Mapbox explorer, real competition, Census demographics, and Score Model v2. Parcel intelligence is separate from the four-factor score and its Data Coverage. Commercial rent remains demo; scores remain unvalidated heuristics.
+VenueBite is a restaurant location-intelligence application built with Flask, Jinja, and vanilla JavaScript. Sprint 09 adds local SQLite Saved Sites and evidence-aware historical comparison to the Sprint 08 visual system, commercial occupancy, Mapbox explorer, competition, Census demographics, Regrid parcels, and Score Model v2. Parcel intelligence remains separate from the four-factor score and Data Coverage. Rent remains demo unless sufficient terms and a personal budget support partial evidence; scores remain unvalidated heuristics.
 
 ## Current Features
 
@@ -11,10 +11,11 @@ VenueBite is a restaurant location-intelligence application built with Flask, Ji
 - Coordinate-to-tract Census lookup and 2024 ACS 5-year estimates, margins of error, geography identifiers, vintage, and independent population/income context scores.
 - Request-scoped Mapbox restaurant discovery, direct/general matching, straight-line distances, observed-sample metrics, deterministic competition explanations, and distinct map markers with safe popups.
 - Bounded coordinate-to-parcel lookup, validated Polygon/MultiPolygon boundaries, optional site attributes, conservative considerations, match quality and source/refresh metadata.
-- Hybrid analysis on live success; transparent demo-score fallback on live failure. Editing location, concept, or radius immediately invalidates the previous report and restaurant markers.
+- Optional commercial-property terms, four rent/charge bases, lease structure, listing provenance, Decimal cost calculations, and personal occupancy-budget fit with partial evidence credit.
+- Hybrid analysis on live success; transparent demo-score fallback on live failure. Editing location, concept, radius or any property term immediately invalidates the previous report, occupancy costs, score, coverage and map overlays.
 - Loading, empty, error, retry, and missing-configuration states; explicit demo-only fallback when geographic search fails.
 - Server-side validation, signed geographic selections, replaceable geographic and market-data providers, and offline automated tests.
-- Compare, Saved Locations, and Find an Area remain coming soon. No accounts or persistence are implemented.
+- SQLite Saved Sites, historical analysis detail, confirmed deletion, and evidence-aware 2-4 site comparison. Find an Area remains hidden; no accounts are implemented.
 
 ## Real and Demo Data
 
@@ -27,14 +28,14 @@ VenueBite is a restaurant location-intelligence application built with Flask, Ji
 | Competition factor | Real-derived heuristic on successful live retrieval |
 | Population / income estimates | Official 2024 ACS 5-year tract estimates when available |
 | Population / income factors | Real-derived Population / Income Model v1; individually demo fallback (85 / 80) if unavailable |
-| Commercial rent / occupancy factor and metric | Fictional demo fixture: score 55; $28/sq ft annual base rent |
+| Commercial rent / occupancy factor and metric | Optional user-supplied cost/budget fit: partial evidence, never independently verified market data; otherwise demo score 55 and fictional $28/sq ft annual base rent. Supplied calculable base rent replaces the demo asking-rent metric with the separate occupancy panel |
 | Observed restaurant count | Live capped Mapbox sample, not all nearby businesses |
 | Schools / universities | Fictional demo fixture, individually labeled |
 | Population growth | Unavailable for geographic analysis; not fabricated |
 | Overall opportunity score | Hybrid: available real-derived factors plus explicitly demo factors |
 | Parcel/site context and boundary | Real Regrid records where current token coverage permits; unavailable fields omitted, never invented; separate from score and coverage |
 
-Missing geography/configuration or explicit demo-only analysis preserves the original fixture (85/80/55/60; overall 72.5), including clearly fictional area metrics and restaurant records. Geographic analysis never substitutes mock raw Census metrics or mock POIs for failed live retrieval. Each unavailable Census factor independently retains its demo score, while its raw metric says unavailable. If competition fails, its score alone falls back to 60; available Census scores still apply. If Census and competition both fail, the four-factor score is demo 72.5. A broad area's marker is a representative point, not a verified rentable site.
+Without supported occupancy input, missing geography/configuration or explicit demo-only analysis preserves the original fixture (85/80/55/60; overall 72.5), including clearly fictional area metrics and restaurant records. Geographic analysis never substitutes mock raw Census metrics or mock POIs for failed live retrieval. Each unavailable Census factor independently retains its demo score, while its raw metric says unavailable. If competition fails, its score alone falls back to 60; available Census scores still apply. If Census and competition both fail and rent is unsupported, the four-factor score is demo 72.5. Budget-supported user terms may replace only rent even when another provider fails. A broad area's marker is a representative point, not a verified rentable site.
 
 The opportunity score is not a prediction or guarantee of business success. Weights, classifications, and normalization thresholds are product assumptions, not scientifically validated findings.
 
@@ -56,7 +57,7 @@ python3 -m venv .venv
 .venv/bin/python -m pip install -r requirements-dev.txt
 ```
 
-`requirements.txt` contains Flask, python-dotenv and Shapely (GEOS polygon topology/containment validation). `requirements-dev.txt` adds pytest. Install just `requirements.txt` when tests are not needed. No database or Node tooling is required to run the app.
+`requirements.txt` contains Flask, python-dotenv and Shapely (GEOS polygon topology/containment validation). `requirements-dev.txt` adds pytest. SQLite uses Python's standard library; no database server or Node tooling is required to run the app.
 
 ## Mapbox Setup
 
@@ -103,9 +104,34 @@ Production uses `GET https://app.regrid.com/api/v2/parcels/point` with server-on
 
 Coverage depends on the account/token. Regrid documents a seven-county sandbox trial (Dallas, Marion, Wilson, Durham, Fillmore, Clark and Gurabo), distinct from its nationwide self-serve trial. See [trial restrictions](https://support.regrid.com/reference/getting-started-with-your-api). No trial county allowlist is hardcoded into the application. HTTP 403 reports restricted entitlement; an empty result explains that street placement or token coverage may be responsible and never establishes parcel nonexistence. Live verification found Dallas and Durham records, while Denver Union Station returned empty exact and nearby collections: consistent with restricted trial coverage, not proof of the account's full entitlement. Confirm your actual plan in the Regrid dashboard.
 
-Usage depends on **records returned**, including repeated lookups; no cache/persistence is implemented. An exact result normally consumes one record; ambiguous results can consume two. Empty results return zero records. Review account usage, caps and licensing before heavy testing; the documented `/api/v2/usage` endpoint is free but is not queried automatically by VenueBite. See [API usage guidance](https://support.regrid.com/docs/getting-started-api). Tests never make live Regrid requests.
+Usage depends on **records returned**, including repeated live lookups; retrieval is not cached. Explicit Saved Sites persist a permitted normalized parcel summary without refetching it during browsing. An exact result normally consumes one record; ambiguous results can consume two. Empty results return zero records. Review account usage, caps and licensing before heavy testing; the documented `/api/v2/usage` endpoint is free but is not queried automatically by VenueBite. See [API usage guidance](https://support.regrid.com/docs/getting-started-api). Tests never make live Regrid requests.
 
 See [Site Intelligence v1](docs/site-intelligence-v1.md) for the resolution algorithm, normalized field mapping, security decisions, live evidence and full Sprint 06 engineering report.
+
+## Commercial Occupancy (Sprint 07)
+
+Expand **Add commercial property terms** to attach an optional space size, asking rent, lease structure, additional charges, monthly occupancy budget, address, source label/URL and notes. All money is explicitly user-entered **USD**, including for non-U.S. locations; there is no currency inference or conversion. The selected Mapbox coordinates remain authoritative. A different property address produces a verification warning, not another geocode or a relocated analysis.
+
+Base rent and additional charges each support `per_sqft_per_year`, `per_sqft_per_month`, `total_monthly` and `total_annual`:
+
+```text
+per SF/year: annual = size * rate; monthly = annual / 12
+per SF/month: monthly = size * rate; annual = monthly * 12
+monthly total: monthly = amount; annual = monthly * 12
+annual total: annual = amount; monthly = annual / 12
+supplied occupancy estimate = base + explicitly supplied additional charges
+budget utilization = estimated monthly occupancy / user's monthly budget
+```
+
+Decimal arithmetic retains precision; displayed money rounds to cents. Missing space is not inferred from Regrid. NNN, Gross, Modified Gross and Unknown are recorded, never used to invent inclusions or expenses. **Missing additional charges means base-only, even for Gross.** The estimate includes only supplied components, not utilities, deposits, buildout, fees, escalations or other unsupplied expenses. Explicit zero additional charges is accepted as the user's assertion, not verification that no other costs exist.
+
+Rent activates only with usable size, base rent, explicit calculable additional charges and a positive monthly occupancy budget. Without terms, size, charges or budget, rent stays demo **55/100**; calculable costs are still shown. No raw asking rate is turned into a nationwide affordability score. Model v1 linearly interpolates budget-ratio anchors: **70% -> 100, 85% -> 85, 100% -> 55, 115% -> 25, 150% -> 0**, capping at 100 below 70% and zero above 150%. These are documented, uncalibrated personal-budget-fit assumptions, not market benchmarks.
+
+Active rent provenance is **partial**, provider `user_supplied`, model `commercial-occupancy-v1`. It receives `20 * 0.5 = 10` coverage points. Full Census and competition plus demo rent remains **80%**; supported user rent raises this to **90%, never 100%**. Opportunity Score and Data Coverage remain independent. Coverage is evidence support, not accuracy or probability of restaurant success. Score Model v2 still weighs population/income/rent/competition **30/30/20/20**, and the original three factor models are unchanged. Partial rent stays a verification risk, even when within budget; only fully real factors qualify as global strengths.
+
+The 2,800-SF example at $32/SF/year plus $8.50/SF/year yields base $89,600/year ($7,466.67/month), additional $23,800/year ($1,983.33/month), and supplied occupancy $113,400/year ($9,450/month). A $10,000 budget gives 94.5% utilization, rent 66/100 and a 13.20-point contribution. Without charges or budget, it cannot replace the demo rent score.
+
+Source URLs are safe HTTP(S) provenance links only; VenueBite does not fetch, scrape or independently verify them. Terms, budgets and notes are request-scoped unless explicitly saved as a historical model snapshot. There is no browser storage, market-rent comparison, property availability claim, lease recommendation, revenue/profit forecast or new property API. See [Commercial Occupancy Model v1](docs/commercial-occupancy-v1.md) for the full design and [Sprint 07 report](docs/sprint07-engineering-report.md) for historical verification.
 
 ## Run
 
@@ -114,7 +140,7 @@ See [Site Intelligence v1](docs/site-intelligence-v1.md) for the resolution algo
 python app.py
 ```
 
-Open <http://127.0.0.1:5000>. With Mapbox configured, select a geographic suggestion, choose a concept and radius, and analyze. The selected place updates the map before analysis; a successful report includes live competition, Census context and parcel intelligence where configured/covered. Editing the location clears the old selection but preserves the concept. Editing location, concept, or radius hides the entire stale report, clears Census and parcel ID/status metadata, and removes competitor markers and parcel layers. The icon-only parcel-focus control becomes available when a valid boundary is shown; it is an explicit camera action, not automatic parcel zooming. Without configuration, enter any location label and concept to run the clearly labeled demo.
+Open <http://127.0.0.1:5000>. With Mapbox configured, select a geographic suggestion, choose a concept and radius, and analyze. The selected place updates the map before analysis; a successful report includes live competition, Census context and parcel intelligence where configured/covered. Editing the location clears the old selection but preserves the concept. Editing location, concept, radius or occupancy terms hides the entire stale report, clears Census and parcel ID/status metadata, marks occupancy stale, and removes competitor markers and parcel layers. The icon-only parcel-focus control becomes available when a valid boundary is shown; it is an explicit camera action, not automatic parcel zooming. Without configuration, enter any location label and concept to run the clearly labeled demo.
 
 Use another port when 5000 is occupied:
 
@@ -133,7 +159,15 @@ git diff --check
 git status --short
 ```
 
-Tests retain all 578 Sprint 01-05 tests and add parcel transport, schema/optional-field handling, geometry/topology, exact/nearby/ambiguous resolution, usage bounds, safe failures, credential isolation, escaping, stale-state and numerical scoring/coverage regression tests. External calls are mocked. Testing app instances skip `.env` and ignore developer Mapbox, Census and Regrid credentials unless explicitly configured in a test. `tests/parcel-layer.test.mjs` additionally exercises map-layer and invalidation lifecycles with an isolated fake map/DOM; with Node available, run `node tests/parcel-layer.test.mjs`.
+Tests retain the 732 Sprint 01-06 cases and add occupancy math, budget-model anchors/bounds, all bases, missing terms, strict validation, partial provenance, coverage/contribution math, provider failure isolation, URL/HTML safety and no-persistence regressions. One parcel-caution assertion was updated because parcel intelligence cannot now assume rent is always demo. External calls are mocked. Testing app instances skip `.env` and ignore developer Mapbox, Census and Regrid credentials unless explicitly configured in a test. With Node available, `node tests/parcel-layer.test.mjs` and `node tests/occupancy-state.test.mjs` exercise isolated map and form-state lifecycles. No new dependency or credential is required for Sprint 07.
+
+Sprint 08 preserves those 919 Python cases and adds functional UI regressions for navigation, input groups, score/coverage output, contribution values, disclosures, validation, unavailable evidence and occupancy utilization beyond 100%. Run all JavaScript suites together with `node tests/run-js-tests.mjs`; this includes parcel behavior, stale occupancy state and loading-state recovery. No frontend framework or charting dependency is required.
+
+## Sprint 08 Interface
+
+The modernized Flask/Jinja workspace uses a compact application shell, a local geospatial backdrop, a score ring, a separate evidence-coverage meter, weighted contribution graphics and responsive market/property sections. Provider attribution, demo/partial labels and essential limitations remain visible; source/model detail uses native expandable disclosures.
+
+See [UI system](docs/sprint08-ui-system.md) for tokens, layout, accessibility and motion behavior, and [Sprint 08 engineering report](docs/sprint08-engineering-report.md) for verification and remaining review items. Model weights, provider configuration and Sprint 07 budget-fit arithmetic are unchanged.
 
 ## Architecture
 
@@ -146,6 +180,7 @@ venuebite/
     data_coverage.py                Independent weighted usable-evidence coverage
     competition_scoring.py          Centralized Competition Model v1
     demographic_scoring.py          Population / Income Model v1 anchors
+    occupancy.py                    Immutable candidate/cost contracts, Decimal math, budget anchors
     concepts.py                     Concept aliases, categories, matching rules
     distance.py                     Haversine meters, mile labels, search bbox
     providers/
@@ -166,6 +201,7 @@ venuebite/
         mock_data_service.py        Immutable fictional market fixture
         geography_service.py        Signed selections and form resolution
         site_intelligence_service.py Exact/nearby/ambiguous site facts, outside score model
+        occupancy_service.py        Input validation, completeness, budget fit and candidate facts
 templates/
     base.html                       Shell and conditional official Mapbox CSS
     _search_form.html               Accessible search and concept form
@@ -173,6 +209,8 @@ templates/
     _competition.html               Live metrics, explanation, sorted tables
     _demographics.html              Tract source, vintage, coverage and MOEs
     _site_intelligence.html         Optional parcel facts, considerations and provenance
+    _occupancy_form.html            Optional commercial property fields
+    _occupancy.html                 Supplied costs, budget context, cautions and source
     index.html / results.html       Initial/error workspace and analysis report
 static/
     css/style.css                   Responsive dashboard and map styles
@@ -232,7 +270,7 @@ The UI retains and displays available MOEs at the Census standard 90% confidence
 
 `DemographicService` centrally skips known non-U.S. country codes from signed Mapbox metadata. Coverage is the 50 states and DC. Unknown country metadata can be resolved authoritatively by the tract lookup; unsupported states/territories or no matching tract fail safely. Paris keeps real geography and available Mapbox POIs, but Census metrics are unavailable and demographic scores are explicitly demo fallback. No U.S. demographic values are passed off as Paris statistics.
 
-Each HTTP request has a bounded timeout and 1 MiB response limit. Redirects are rejected so credentials are never forwarded to another host. Authorization, rate limits, DNS/network/timeouts, empty results, and malformed data become application-owned messages. Logs contain only Census endpoint family and HTTP status, never URLs, raw errors, bodies, or keys. Missing keys skip both Census requests. Failure in either Census step preserves independent competition/map functionality. There is no response cache, persistence, retry loop, or extra per-variable request; two Census calls can take up to twice the configured timeout.
+Each HTTP request has a bounded timeout and 1 MiB response limit. Redirects are rejected so credentials are never forwarded to another host. Authorization, rate limits, DNS/network/timeouts, empty results, and malformed data become application-owned messages. Logs contain only Census endpoint family and HTTP status, never URLs, raw errors, bodies, or keys. Missing keys skip both Census requests. Failure in either Census step preserves independent competition/map functionality. There is no response cache, retry loop, or extra per-variable request; two Census calls can take up to twice the configured timeout. Explicitly saved snapshots retain normalized Census facts, not raw responses.
 
 Population growth is explicitly unavailable in geographic reports. Adjacent ACS 5-year releases overlap and are not used for growth. A future implementation needs non-overlapping periods (2015-2019 vs 2020-2024), verified comparable tract boundaries, and uncertainty-aware comparison. Pure demo-only reports retain the original explicitly fictional growth fixture. Residential ACS rent is never substituted for commercial asking rent.
 
@@ -245,7 +283,7 @@ Both models use deterministic piecewise-linear interpolation between centralized
 - `population-v1` anchors (tract people -> score): 0 -> 0; 1,000 -> 25; 3,000 -> 60; 6,000 -> 85; 10,000+ -> 100. This measures population context only, not density, foot traffic, daytime population, demand, or customers. No unverified land area is used.
 - `income-v1` anchors (annual household dollars -> score): 0 -> 0; 25,000 -> 20; 50,000 -> 45; 75,000 -> 65; 100,000 -> 80; 150,000+ -> 100. Higher scores represent stronger household purchasing-power context, not disposable income, concept fit, or restaurant spending.
 
-Structured per-factor provenance includes status (`real`, `demo`, `fallback`), provider, vintage, GEOID, model version, description, and fallback reason. The banner, factor badges, area metric labels, and strength/risk explanations use this state rather than inferring source from label text. Rent and schools remain demo; nearby businesses are not falsely inferred from a restaurant-only sample.
+Structured per-factor provenance includes status (`real`, `partial`, `demo`, `fallback`), provider, vintage, GEOID, model version, description, and fallback reason. The banner, factor badges, area metric labels, and strength/risk explanations use this state rather than inferring source from label text. Rent is partial only with sufficient user occupancy evidence; otherwise it and schools remain demo. Nearby businesses are not falsely inferred from a restaurant-only sample.
 
 ### VenueBite Score Model v2
 
@@ -259,7 +297,7 @@ overall = round(clamp(raw_weighted_sum, 0, 100), 1)
 demo-only / all providers unavailable: 85 * .30 + 80 * .30 + 55 * .20 + 60 * .20 = 72.5
 ```
 
-Higher factor scores always mean better opportunity context. Population describes tract demographic context, not customer demand; income describes household purchasing-power context, not restaurant spending. A high rent score means more affordable occupancy costs; a high competition score means lower observed competitive pressure. These normalized factors are not raw prices or restaurant counts. Rent stays fictional, and displayed demo metrics do not feed a real normalization process. Weights and all v1 anchors/pressure formulas are unchanged.
+Higher factor scores always mean better opportunity context. Population describes tract demographic context, not customer demand; income describes household purchasing-power context, not restaurant spending. A high supported rent score means better fit against the user's occupancy budget; a high competition score means lower observed competitive pressure. These normalized factors are not raw prices or restaurant counts. Unsupported rent stays fictional, and displayed demo metrics do not feed a real normalization process. Weights and existing population/income/competition anchors/pressure formulas are unchanged.
 
 Contributions are backend-computed and retained without rounding. The UI displays two decimals (74 at 30% contributes 22.20 points); the total is rounded once to one decimal before classification. Display rounding never feeds score calculation. The internal immutable trace retains model version, each factor's score, weight, contribution, direction, expected/actual source, status, vintage/GEOID/model/reason, coverage credit, raw sum, final score, and coverage. It is not serialized as raw debugging JSON in the UI.
 
@@ -273,13 +311,14 @@ Data Coverage is separate from Opportunity Score and never adjusts factor scores
 credit = real: 1.0; explicit partial: 0.5; demo/fallback/unavailable: 0.0
 coverage = round(sum(factor_weight * credit * 100), 1)
 current successful hybrid = 30 + 30 + 0 + 20 = 80%
+with supported user occupancy = 30 + 30 + 10 + 20 = 90%
 ```
 
 Labels are Very high at 90+, High at 70+, Moderate at 50+, Limited at 25+, and Very limited below 25. A nonblocking verification notice appears below 70%. Full Census + failed competition yields 60%; failed Census + usable competition yields 20%; both fail or demo-only yields 0%. A single usable Census estimate plus competition yields 50%. Genuine zero estimates are usable and receive full coverage even though their opportunity scores are zero.
 
-Coverage reads structured per-factor statuses, never label text. A partially available Census response does **not** halve an otherwise usable population or income factor: usable estimates are `real`, missing ones are `fallback`. Explicit factor-level `partial` is supported at half credit for future incomplete inputs; no current provider result is newly marked partial. A usable capped POI sample gets its full factor weight, not a claim that all restaurants were found. MOEs and discovery completeness remain quality notes, not hidden coverage penalties.
+Coverage reads structured per-factor statuses, never label text. A partially available Census response does **not** halve an otherwise usable population or income factor: usable estimates are `real`, missing ones are `fallback`. Budget-supported user rent is `partial` at half credit because it has not been independently verified. A usable capped POI sample gets its full factor weight, not a claim that all restaurants were found. MOEs and discovery completeness remain quality notes, not hidden coverage penalties.
 
-Coverage measures how much of this four-factor model has real usable evidence. It is **not** scientific confidence, accuracy, restaurant demand, statistical significance, or probability of success. The current model cannot reach 100% real coverage while rent remains demo.
+Coverage measures how much of this four-factor model has usable evidence, with partial credit for user terms. It is **not** scientific confidence, accuracy, restaurant demand, statistical significance, or probability of success. The current product cannot reach 100% coverage from user-supplied rent; the normal maximum is 90%.
 
 ### Deterministic Explanations
 
@@ -304,8 +343,27 @@ Demo, fallback, partial and unavailable factors produce verification risks regar
 
 Live map/search/competition verification requires a Mapbox account, authorized public token, and network access. Map rendering also requires WebGL. Failures preserve geography where possible and explicitly demo scoring, not invented real results. Discovery is a capped, potentially incomplete provider sample; unsupported categories use approximate text matching. Provider data and scores can change between requests. No ratings, reviews, pricing, travel times, or opening-hours inference are used.
 
-Broad places resolve to representative points, not storefront availability. Official tract population/income estimates provide limited demographic context, not comprehensive market research. Tract size/boundaries, representative-point placement, high MOEs, group quarters, five-year pooling, POI coverage/caps, income caps, and uncalibrated scoring can materially affect comparisons. Values may change between releases and scores can saturate; differences are not claims of statistical significance. Real parcel/assessor and informational zoning attributes may be shown, but no legal restaurant permission, availability, commercial asking rent, traffic, demand, or business-success estimates are provided. Assessor values retain county value-type context and are not independent market valuations; sale values are historical. Missing building fields never prove vacancy. There is **no persistent POI or parcel storage**, database, response cache, or browser localStorage. Provider results are processed per request and rendered as a temporary snapshot only. Selections and analyses are not saved.
+Broad places resolve to representative points, not storefront availability. Official tract population/income estimates provide limited demographic context, not comprehensive market research. Tract size/boundaries, representative-point placement, high MOEs, group quarters, five-year pooling, POI coverage/caps, income caps, and uncalibrated scoring can materially affect comparisons. Values may change between releases and scores can saturate; differences are not claims of statistical significance. Real parcel/assessor and informational zoning attributes may be shown, but no legal restaurant permission, availability, commercial asking rent, traffic, demand, or business-success estimates are provided. Assessor values retain county value-type context and are not independent market valuations; sale values are historical. Missing building fields never prove vacancy. Search Box responses and POI details remain session-only, with no response cache or browser localStorage. Explicit saving stores only the constrained Sprint 09 model/user snapshot, not provider payloads or a business directory.
 
-Next: evaluate trustworthy live commercial occupancy-cost sources and calibrate context scoring without folding parcel facts into the current four-factor model. Growth needs comparable boundaries and non-overlapping periods. Saved analyses and comparisons require provider-storage licensing review before persistence; accounts, Find an Area, AI explanations, deployment, and production hardening remain future work.
+Next: a permanent-storage-capable geocoding source and production security/ownership, before shared deployment. Growth needs comparable boundaries and non-overlapping periods. Accounts, Find an Area, AI explanations, and production hardening remain future work.
+
+## Sprint 09: Saved Sites and Compare
+
+Analyze normally, expand **Save site**, enter a name and **your own location label**, then save the completed model snapshot. SQLite lives at `instance/venuebite.db`, with optional `VENUEBITE_DATABASE_PATH` override. The database and SQLite sidecars are ignored by Git. Keep custom paths outside tracked source directories and add matching ignore rules. Initialization is lazy, or explicit:
+
+```powershell
+.\.venv\Scripts\python.exe -m flask --app app init-db
+.\.venv\Scripts\python.exe -m flask --app app run --host 127.0.0.1
+.\.venv\Scripts\python.exe -m pytest
+node tests/run-js-tests.mjs
+```
+
+Saved Sites lists historical analyses. Detail preserves actual analysis/save UTC timestamps, Census vintage, model versions, scores, contributions, evidence and occupancy terms. Deletion requires a confirmation and CSRF-protected POST. Select 2-4 snapshots for Compare; missing facts are unavailable, not zero. Neutral highlights are gated by comparable model/context/evidence. Opportunity Score never becomes a recommendation, and Data Coverage is never success probability. No saved-page or comparison request runs analysis providers. Analyze again prefills user inputs only; select a fresh location suggestion before submitting. It never overwrites the original.
+
+**Search Box retention boundary:** no Search Box coordinates, IDs, result labels, POI names/details, raw payloads or business directory are saved. Only VenueBite model outputs and aggregate observed-sample summaries, permitted normalized Census/Regrid facts and explicit user inputs are retained. Saved maps are deliberately omitted. There is no permission flag that enables Search Box storage and no silent API switch. The user label is not automatically copied from provider output. Database schema 3 / snapshot format 2 removes prototype geography and response attribution text; migration retains records and model outputs, scrubs old provider-derived location metadata and vacuums the file. Unreadable legacy snapshots cause a safe migration failure, not data deletion.
+
+Tests use isolated temporary databases and fake providers, never the development DB or live Regrid. A stable server-side `SECRET_KEY` keeps in-progress signed forms/session cookies usable through restart; records survive regardless. Saved records are shared local application data, not account-private records. SQLite is not encrypted. Restrict access to the machine/database and do not expose this development app publicly. Future accounts require owner migrations and authorization on every read/write; PostgreSQL can replace the repository's storage boundary without rewriting scoring.
+
+See [persistence design](docs/saved-sites-comparison-v1.md) and [Sprint 09 engineering report](docs/sprint09-engineering-report.md).
 
 Icons are from [Lucide 0.468.0](https://github.com/lucide-icons/lucide/tree/0.468.0), with the license in `static/icons/LICENSE`. Maps and imagery retain Mapbox's built-in attribution.

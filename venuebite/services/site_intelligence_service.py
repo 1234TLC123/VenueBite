@@ -163,7 +163,7 @@ class SiteIntelligenceService:
                 notes.append(VALUE_DISCLAIMER)
             if parcel.last_sale_price is not None or parcel.last_sale_date:
                 notes.append(SALE_DISCLAIMER)
-            notes.append("Commercial occupancy cost remains demo; parcel facts do not change Opportunity Score or its Data Coverage.")
+            notes.append("Parcel facts do not change Opportunity Score or its Data Coverage. Assessor values are not asking rent or commercial lease terms.")
             provenance = SiteProvenance("real", quality, refresh_date=parcel.provider_refresh_date, parcel_id=parcel.regrid_id,
                                         coverage_notes=("County/plan-dependent fields; periodic source refresh, not real-time property information.",))
             return SiteIntelligence(quality, message, parcel, _site_facts(parcel), tuple(notes), development, provenance, calls, returned)

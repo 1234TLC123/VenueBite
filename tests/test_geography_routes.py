@@ -82,7 +82,8 @@ def test_selected_location_drives_map_and_keeps_original_demo_scoring(explorer):
     assert "41.87810, -87.62980" in html
     assert "data-initial-location=" in html
     assert [call[0] for call in provider.calls] == ["retrieve"]
-    assert "Set-Cookie" not in response.headers
+    assert 'name="snapshot_token"' in html
+    assert "HttpOnly" in response.headers["Set-Cookie"] and "SameSite=Lax" in response.headers["Set-Cookie"]
 
 
 def test_no_javascript_form_resolves_location_server_side(explorer):

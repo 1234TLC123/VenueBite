@@ -53,7 +53,8 @@ def test_hybrid_route_labels_factors_and_removes_fictional_list(workspace):
     assert response.status_code == 200
     html = response.get_data(as_text=True)
     assert "Hybrid analysis" in html
-    assert html.count('class="factor-source "') == 3
+    assert html.count('data-factor-evidence="demo"') + html.count('data-factor-evidence="fallback"') == 3
+    assert html.count('data-factor-evidence="real"') == 1
     assert "Real observed data" in html
     assert "Real observed kitchen" in html
     assert "Sample Kitchen" not in html
@@ -62,7 +63,8 @@ def test_hybrid_route_labels_factors_and_removes_fictional_list(workspace):
     assert "76.5" in html
     assert pois.calls[0][0] == LOCATION
     assert response.headers["Cache-Control"] == "no-store"
-    assert "Set-Cookie" not in response.headers
+    assert 'name="snapshot_token"' in html
+    assert "HttpOnly" in response.headers["Set-Cookie"] and "SameSite=Lax" in response.headers["Set-Cookie"]
 
 
 def test_signed_coordinates_are_reused_without_second_geocode(workspace):

@@ -62,7 +62,7 @@ db.sqlite3
 db.sqlite3-journal
 
 # Flask stuff:
-instance/
+# SQLite instance files are ignored explicitly below; keep instance source visible.
 .webassets-cache
 
 # Scrapy stuff:
@@ -218,3 +218,11 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Local saved-analysis database and SQLite sidecar files (not source/config).
+instance/*.db
+instance/*.db-*
+instance/*.sqlite
+instance/*.sqlite-*
+instance/*.sqlite3
+instance/*.sqlite3-*

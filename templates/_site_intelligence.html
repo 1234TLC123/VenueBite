@@ -1,5 +1,5 @@
 <section class="site-section" aria-labelledby="site-heading" data-analysis-output data-site-status="{{ report.site.status }}" {% if report.site.parcel %}data-site-id="{{ report.site.parcel.regrid_id }}"{% endif %}>
-    <div class="section-heading"><h2 id="site-heading">Site intelligence</h2><span class="data-badge {{ 'real-source' if report.site.available else '' }}">{{ report.site.label }}</span></div>
+    <div class="section-heading"><div><p class="eyebrow">PARCEL CONTEXT</p><h2 id="site-heading">Site intelligence</h2></div><span class="data-badge {{ 'real-source' if report.site.available else '' }}">{{ report.site.label }}</span></div>
     <p class="site-match" role="status">{{ report.site.message }}</p>
     {% if report.site.available %}
     <dl class="site-facts">
@@ -8,12 +8,13 @@
         {% endfor %}
     </dl>
     <p class="site-zoning-caution">{{ icon('info') }}{{ report.site.zoning_disclaimer }}</p>
-    <div class="site-considerations"><h3>Site considerations</h3><ul>{% for note in report.site.considerations %}<li>{{ note }}</li>{% endfor %}</ul></div>
+    <details class="site-considerations"><summary>Site considerations &amp; limitations</summary><ul>{% for note in report.site.considerations %}<li>{{ note }}</li>{% endfor %}</ul></details>
     <details class="site-provenance"><summary>{{ icon('info') }}Parcel source &amp; match quality</summary>
         <p>{{ report.site.provenance.provider }} &middot; {{ report.site.provenance.match_quality }} point match{% if report.site.provenance.refresh_date %} &middot; County refresh {{ report.site.provenance.refresh_date }}{% endif %}</p>
         {% if report.site.provenance.parcel_id %}<p>Regrid ID <span class="parcel-id">{{ report.site.provenance.parcel_id }}</span></p>{% endif %}
         {% for note in report.site.provenance.coverage_notes %}<p>{{ note }}</p>{% endfor %}
         {% if report.site.parcel.source_url %}<a href="{{ report.site.parcel.source_url }}" target="_blank" rel="noopener noreferrer">County source record</a>{% endif %}
     </details>
-    {% else %}<p class="section-caption">Source: Regrid. No parcel facts or boundary selected. Opportunity Score and Data Coverage remain separate; commercial rent remains demo.</p>{% endif %}
+    {% else %}<div class="site-empty">{{ icon('building-2', 'large-icon') }}<h3>Parcel data unavailable for this point</h3><p class="section-caption">Source: Regrid. No parcel facts or boundary selected.</p></div>{% endif %}
+    <p class="section-caption" id="site-model-limitation">Parcel context is separate from Opportunity Score and Data Coverage. Assessments are not verified market values or asking rent; sales are historical. Missing fields are unknown, not negative property facts.</p>
 </section>

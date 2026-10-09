@@ -1,0 +1,52 @@
+{% macro term_input(name, label, placeholder='', numeric=false, limit=48) -%}
+<div class="form-field">
+    <label for="{{ name }}">{{ label }}</label>
+    <div class="input-wrap{% if errors.get(name) %} invalid{% endif %}">
+        <input id="{{ name }}" name="{{ name }}" type="text" value="{{ values.get(name, '') }}" maxlength="{{ limit }}"
+            placeholder="{{ placeholder }}" {% if numeric %}inputmode="decimal"{% endif %} data-occupancy-input
+            {% if errors.get(name) %}aria-invalid="true" aria-describedby="{{ name }}-error"{% endif %}>
+    </div>
+    {% if errors.get(name) %}<p class="field-error" id="{{ name }}-error" role="alert">{{ errors[name] }}</p>{% endif %}
+</div>
+{%- endmacro %}
+{% macro term_select(name, label, options, default) -%}
+<div class="form-field">
+    <label for="{{ name }}">{{ label }}</label>
+    <select id="{{ name }}" name="{{ name }}" data-occupancy-input
+        {% if errors.get(name) %}aria-invalid="true" aria-describedby="{{ name }}-error"{% endif %}>
+        {% for value, text in options.items() %}<option value="{{ value }}" {% if values.get(name, default) == value %}selected{% endif %}>{{ text }}</option>{% endfor %}
+    </select>
+    {% if errors.get(name) %}<p class="field-error" id="{{ name }}-error" role="alert">{{ errors[name] }}</p>{% endif %}
+</div>
+{%- endmacro %}
+<details class="occupancy-inputs" {% if values.get('occupancy_provided') %}open{% endif %}>
+    <summary>{{ icon('building-2') }}Add commercial property terms<span class="small-label">Optional &middot; USD</span></summary>
+    <div class="occupancy-form-grid">
+        <fieldset class="term-group term-space"><legend>Space</legend>
+        {{ term_input('property_address', 'Property / space address', 'Selected analysis location', limit=300) }}
+        {{ term_input('space_size_sqft', 'Available space (SF)', '2,800', numeric=true) }}
+        </fieldset>
+        <fieldset class="term-group term-lease"><legend>Lease</legend>
+        {{ term_select('lease_structure', 'Lease structure', occupancy_lease_structures, 'unknown') }}
+        {{ term_input('asking_rent', 'Asking rent (USD)', '32.00', numeric=true) }}
+        {{ term_select('asking_rent_basis', 'Asking rent basis', occupancy_rent_bases, 'per_sqft_per_year') }}
+        </fieldset>
+        <fieldset class="term-group"><legend>Additional costs</legend>
+        {{ term_input('additional_occupancy_rate', 'Additional NNN / CAM / operating charges (USD)', 'Not supplied', numeric=true) }}
+        {{ term_select('additional_occupancy_basis', 'Additional charge basis', occupancy_rent_bases, 'per_sqft_per_year') }}
+        </fieldset>
+        <fieldset class="term-group"><legend>Business threshold</legend>
+        {{ term_input('monthly_occupancy_budget', 'Monthly occupancy budget (USD)', '10,000.00', numeric=true) }}
+        </fieldset>
+        <fieldset class="term-group term-source"><legend>Source</legend>
+        {{ term_input('source_label', 'Source label', 'Broker quote / listing', limit=120) }}
+        {{ term_input('source_url', 'Listing / source URL', 'https://', limit=2000) }}
+        <div class="form-field occupancy-notes-field">
+            <label for="occupancy_notes">Notes</label>
+            <textarea id="occupancy_notes" name="occupancy_notes" rows="2" maxlength="1000" data-occupancy-input
+                {% if errors.get('occupancy_notes') %}aria-invalid="true" aria-describedby="occupancy_notes-error"{% endif %}>{{ values.get('occupancy_notes', '') }}</textarea>
+            {% if errors.get('occupancy_notes') %}<p class="field-error" id="occupancy_notes-error" role="alert">{{ errors.occupancy_notes }}</p>{% endif %}
+        </div>
+        </fieldset>
+    </div>
+</details>

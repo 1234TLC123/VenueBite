@@ -1,0 +1,7 @@
+{% extends 'base.html' %}
+{% block title %}Saved Sites{% endblock %}
+{% block eyebrow %}CANDIDATE WORKSPACE{% endblock %}
+{% block heading %}Saved Sites{% endblock %}
+{% block content %}
+<section class="saved-empty"><span class="ready-symbol">{{ icon('info') }}</span><h2>Unable to complete this request</h2><p role="alert">{{ message }}</p><div class="action-row"><a class="command-button" href="{{ url_for('saved.index') }}">{{ icon('bookmark') }}Saved Sites</a><a class="command-button primary-command" href="{{ url_for('main.home') }}">{{ icon('scan-search') }}Analyze a location</a></div></section>
+{% endblock %}

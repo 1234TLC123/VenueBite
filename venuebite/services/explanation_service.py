@@ -4,6 +4,7 @@ from dataclasses import dataclass
 
 from venuebite.distance import METERS_PER_MILE
 from venuebite.scoring import CLASSIFICATION_BANDS, RISK_THRESHOLD, STRENGTH_THRESHOLD
+from venuebite.services.occupancy_service import EVIDENCE_CAUTION, LIMITATION
 
 
 MAX_STRENGTHS = 2
@@ -82,7 +83,7 @@ def _gap_context(factor, source):
     return text
 
 
-def explain_analysis(score, provenance, coverage, *, demographics=None, competition=None):
+def explain_analysis(score, provenance, coverage, *, demographics=None, competition=None, occupancy=None):
     strengths, risks = [], []
     _, close_direct = _competition_context(competition)
     for factor in score.factors:
@@ -90,6 +91,10 @@ def explain_analysis(score, provenance, coverage, *, demographics=None, competit
         if source.status != "real":
             text = _gap_context(factor, source)
             priority = factor.weight * (1 - next(item.credit for item in coverage.factors if item.key == factor.key))
+            if factor.key == "rent" and occupancy and occupancy.supported:
+                text = (f"{occupancy.budget_statement} Budget utilization: {occupancy.model.utilization_label}. "
+                        f"{EVIDENCE_CAUTION} Partial evidence receives half the rent coverage weight, not a halved rent score.")
+                priority = max(priority, (100 - factor.score) * factor.weight / 100)
             target = risks
         elif factor.score < RISK_THRESHOLD or (factor.key == "competition" and close_direct):
             text = _real_context(factor.key, False, demographics, competition)
@@ -117,6 +122,8 @@ def explain_analysis(score, provenance, coverage, *, demographics=None, competit
     gaps = [factor.label.lower() for factor in score.factors if provenance[factor.key].status != "real"]
     if gaps:
         summary += "Evidence needs verification for " + ", ".join(gaps) + ". "
+    if occupancy and occupancy.supported:
+        summary += occupancy.budget_statement + " "
     summary += f"Data Coverage is {coverage.percent:g}%, not a probability of business success."
 
     notes = []
@@ -128,6 +135,9 @@ def explain_analysis(score, provenance, coverage, *, demographics=None, competit
             notes.append(competition.coverage_note)
     if provenance["rent"].status in {"demo", "fallback"}:
         notes.append("Commercial rent remains demo; residential rent is not a substitute. No live commercial occupancy cost has been verified.")
+    if occupancy:
+        notes.extend(occupancy.warnings)
+        notes.append(LIMITATION)
     notes.append("Data Coverage credits usable factor evidence, not accuracy, statistical confidence, concept demand, or probability of success. Model weights and thresholds are not scientifically validated.")
     weights = ", ".join(f"{factor.label} {factor.weight_percent}%" for factor in score.factors)
     bands = ", ".join(f"{key} at {minimum}+" if minimum else f"{key} below {CLASSIFICATION_BANDS[-2][0]}" for minimum, _, key in CLASSIFICATION_BANDS)

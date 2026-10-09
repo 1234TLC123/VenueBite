@@ -1,0 +1,20 @@
+<section class="assessment-section" aria-labelledby="assessment-heading" data-analysis-output>
+    <div class="section-heading"><div><p class="eyebrow">DECISION SIGNALS</p><h2 id="assessment-heading">Strengths &amp; risks</h2></div><span class="small-label">Evidence-led review</span></div>
+    <div class="assessment-columns">
+        <div class="assessment-group strengths">
+            <h3>{{ icon('circle-check') }}Strengths</h3>
+            {% for insight in report.explanations.strengths %}
+            <article class="assessment-item"><div><strong>{{ insight.label }}</strong><span>{{ '%g'|format(insight.score) }} / 100</span></div><p>{{ insight.explanation }}</p></article>
+            {% else %}<p class="section-caption">No fully real-data factors meet the strength threshold.</p>{% endfor %}
+        </div>
+        <div class="assessment-group risks">
+            <h3>{{ icon('triangle-alert') }}Risks / review items</h3>
+            <div class="risk-grid">
+            {% for insight in report.explanations.risks %}
+            <article class="assessment-item"><div><strong>{{ insight.label }}{% if insight.status != 'real' %} &middot; verify data{% endif %}</strong><span>{{ '%g'|format(insight.score) }} / 100</span></div><p>{{ insight.explanation }}</p></article>
+            {% endfor %}
+            </div>
+            {% if report.explanations.no_numeric_risks %}<p class="section-caption">No factors fall below the risk threshold.{% if report.explanations.risks %} Evidence or proximity risks still require verification.{% endif %}</p>{% endif %}
+        </div>
+    </div>
+</section>

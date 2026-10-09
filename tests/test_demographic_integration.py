@@ -197,8 +197,8 @@ def test_successful_route_shows_real_metrics_moes_and_no_old_mock_leaks(workspac
         assert text in html
     for text in ("184,500", "$72,400", "+1.8%", "Sample Kitchen", "Sample business count"):
         assert text not in html
-    assert html.count('class="factor-source real-source"') == 3
-    assert html.count('class="factor-source "') == 1
+    assert html.count('data-factor-evidence="real"') == 3
+    assert html.count('data-factor-evidence="demo"') == 1
     assert "Demo data" in html and "$28 / sq ft" in html
     assert 'data-census-status="available"' in html
     assert 'data-competition=' in html and 'data-initial-location=' in html
@@ -212,7 +212,7 @@ def test_partial_route_marks_missing_metric_and_demo_factor(workspace):
     html = client.post("/", data={"location": "Denver", "concept": "Indian"}).get_data(as_text=True)
     assert 'data-census-status="partial"' in html and "Demo data (fallback)" in html
     assert "$72,400" not in html
-    assert html.count('class="factor-source real-source"') == 2
+    assert html.count('data-factor-evidence="real"') == 2
     assert "Income: Demo data" in html
 
 
@@ -367,7 +367,12 @@ def test_score_v2_non_us_and_explicit_demo(workspace):
 def test_score_v2_output_uses_existing_stale_report_guard():
     root = Path(__file__).resolve().parents[1]
     results = (root / "templates/results.html").read_text()
-    score_section = results.split('aria-labelledby="score-heading" data-analysis-output>', 1)[1].split("</section>", 1)[0]
+    score_section = (root / "templates/_score_overview.html").read_text()
+    factors = (root / "templates/_factor_intelligence.html").read_text()
+    assessment = (root / "templates/_strengths_risks.html").read_text()
+    assert "{% include '_score_overview.html' %}" in results
+    assert 'aria-labelledby="score-heading" data-analysis-output>' in score_section
     assert 'id="coverage-heading"' in score_section
-    assert "report.explanations.summary" in score_section and "factor.weighted_points_label" in score_section
-    assert "report.explanations.strengths" in results.split('class="lower-grid" data-analysis-output>', 1)[1]
+    assert "report.explanations.summary" in score_section and "factor.weighted_points_label" in factors
+    assert 'data-analysis-output' in factors and 'data-analysis-output' in assessment
+    assert "report.explanations.strengths" in assessment

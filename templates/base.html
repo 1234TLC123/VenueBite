@@ -7,46 +7,39 @@
     <title>{% block title %}Analyze a Location{% endblock %} | VenueBite</title>
     <link rel="icon" href="{{ url_for('static', filename='icons/map-pin.svg') }}" type="image/svg+xml">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-    {% if map_enabled %}<link rel="stylesheet" href="https://api.mapbox.com/mapbox-gl-js/v3.30.0/mapbox-gl.css">{% endif %}
-    <script src="{{ url_for('static', filename='js/main.js') }}" type="module"></script>
+    {% if map_enabled and not saved_workspace %}<link rel="stylesheet" href="https://api.mapbox.com/mapbox-gl-js/v3.30.0/mapbox-gl.css">{% endif %}
+    <script src="{{ url_for('static', filename='js/saved-sites.js' if saved_workspace else 'js/main.js') }}" type="module"></script>
 </head>
 <body>
     {% from '_icons.html' import icon with context %}
+    <div class="environment" aria-hidden="true"><div class="environment-grid"></div><div class="environment-scan"></div></div>
     <a class="skip-link" href="#main">Skip to analysis</a>
     <header class="app-header">
         <a class="brand" href="{{ url_for('main.home') }}" aria-label="VenueBite home">
             <span class="brand-symbol">{{ icon('map-pin', 'brand-icon') }}</span>
-            VenueBite<span class="brand-period">.</span>
+            <span>VenueBite<span class="brand-period">.</span><small>Location Intelligence</small></span>
         </a>
         <nav class="main-nav" aria-label="Main navigation">
-            <a class="nav-item active" href="{{ url_for('main.home') }}" aria-current="page">
+            <a class="nav-item{% if request.endpoint == 'main.home' %} active{% endif %}" href="{{ url_for('main.home') }}" {% if request.endpoint == 'main.home' %}aria-current="page"{% endif %}>
                 {{ icon('scan-search') }}<span>Analyze</span>
             </a>
-            <span class="nav-soon" tabindex="0" aria-label="Compare, coming soon">
-                {{ icon('git-compare-arrows') }}<span>Compare</span>
-                <span class="tooltip" role="tooltip">Coming soon</span>
-            </span>
-            <span class="nav-soon" tabindex="0" aria-label="Saved Locations, coming soon">
-                {{ icon('bookmark') }}<span>Saved Locations</span>
-                <span class="tooltip" role="tooltip">Coming soon</span>
-            </span>
-            <span class="nav-soon" tabindex="0" aria-label="Find an Area, coming soon">
-                {{ icon('compass') }}<span>Find an Area</span>
-                <span class="tooltip" role="tooltip">Coming soon</span>
-            </span>
+            <a class="nav-item{% if request.endpoint and request.endpoint.startswith('saved.') and request.endpoint != 'saved.compare' %} active{% endif %}" href="{{ url_for('saved.index') }}" {% if request.endpoint and request.endpoint.startswith('saved.') and request.endpoint != 'saved.compare' %}aria-current="page"{% endif %}>{{ icon('bookmark') }}<span>Saved Sites</span></a>
+            <a class="nav-item{% if request.endpoint == 'saved.compare' %} active{% endif %}" href="{{ url_for('saved.compare') }}" {% if request.endpoint == 'saved.compare' %}aria-current="page"{% endif %}>{{ icon('git-compare-arrows') }}<span>Compare</span></a>
         </nav>
-        <span class="header-status"><span class="status-dot"></span>Location explorer</span>
+        <span class="header-status">Analysis workspace {{ icon('scan-search') }}</span>
     </header>
 
     <main id="main" class="workspace">
         <div class="page-heading">
             <div>
-                <p class="eyebrow">VENUEBITE WORKSPACE</p>
-                <h1>Location intelligence</h1>
+                <p class="eyebrow">{% block eyebrow %}LOCATION INTELLIGENCE{% endblock %}</p>
+                <h1>{% block heading %}Analyze a location{% endblock %}</h1>
             </div>
-            <span class="version-tag">SITE INTELLIGENCE / 06</span>
+            <span class="workspace-mark" aria-hidden="true">{{ icon('compass') }}</span>
         </div>
-        {% include '_search_form.html' %}
+        {% if not saved_workspace %}{% include '_search_form.html' %}{% endif %}
+        {% if reanalysis_snapshot %}<p class="snapshot-notice" role="status">Saved user label and terms from {{ reanalysis_snapshot.snapshot.analysis.timestamp|snapshot_date }}. Coordinates were not retained. Select a fresh location suggestion, then Analyze. The saved snapshot will not be overwritten.</p>{% endif %}
+        {% for category, message in get_flashed_messages(with_categories=true) %}<div class="feedback-banner feedback-{{ category }}" role="status">{{ icon('circle-check' if category == 'success' else 'info') }}<p>{{ message }}</p></div>{% endfor %}
         {% if page_error %}
         <div class="error-banner" role="alert">{{ icon('circle-alert') }}<p>{{ page_error }}</p></div>
         {% endif %}
@@ -54,7 +47,7 @@
     </main>
     <footer class="app-footer">
         <span>VenueBite <span class="footer-divider">/</span> Location intelligence</span>
-        <span>Census and competition where available. Commercial rent remains demo. Not a guarantee of success.</span>
+        <span>Census and competition where available. Commercial terms require verification. Not a guarantee of success.</span>
     </footer>
 </body>
 </html>

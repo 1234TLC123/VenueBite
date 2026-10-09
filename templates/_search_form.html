@@ -1,4 +1,4 @@
-<form class="search-form" method="post" action="{{ url_for('main.home') }}" novalidate data-analysis-form data-geography-enabled="{{ 'true' if geography_enabled else 'false' }}">
+<form id="analysis-form" class="search-form" method="post" action="{{ url_for('main.home') }}" novalidate data-analysis-form data-geography-enabled="{{ 'true' if geography_enabled else 'false' }}">
     <input type="hidden" name="selection_token" id="selection-token" value="{{ values.get('selection_token', '') }}">
     <input type="hidden" name="latitude" id="latitude" value="{{ values.get('latitude', '') }}">
     <input type="hidden" name="longitude" id="longitude" value="{{ values.get('longitude', '') }}">
@@ -49,6 +49,7 @@
         </select>
         {% if errors.get('radius_miles') %}<p class="field-error" id="radius-error" role="alert">{{ errors.radius_miles }}</p>{% endif %}
     </div>
+    {% include '_occupancy_form.html' %}
     <button class="analyze-button" type="submit" data-submit-button>
         {{ icon('scan-search') }}<span data-submit-label>Analyze Location</span>
     </button>

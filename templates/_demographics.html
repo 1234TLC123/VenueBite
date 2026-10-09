@@ -3,6 +3,11 @@
     <div class="census-heading"><h3>{{ icon('map-pin') }}Census tract context</h3><span class="small-label">{{ census.status|capitalize }}</span></div>
     {% if census.geography %}
     <p><strong>{{ census.geography_name or census.geography.name }}</strong></p>
+    {% endif %}
+    {% if census.reason %}<p class="census-unavailable" role="status">{{ census.reason }}</p>{% endif %}
+    <p class="section-caption">The tract containing the selected point is a local demographic proxy, not a restaurant trade area, exact neighborhood, customer count, or demand estimate. ACS values are survey estimates, not a current headcount.</p>
+    <details class="model-details"><summary>Census source, geography &amp; uncertainty</summary>
+    {% if census.geography %}
     <dl class="census-metadata">
         <div><dt>Geography</dt><dd>Tract &middot; GEOID {{ census.geography.geoid }}</dd></div>
         <div><dt>County / state</dt><dd>{{ census.geography.county_name or ('FIPS ' ~ census.geography.county_fips) }} / {{ census.geography.state_name or ('FIPS ' ~ census.geography.state_fips) }}</dd></div>
@@ -10,9 +15,8 @@
         <div><dt>Tract boundaries</dt><dd>{{ census.geography.geography_vintage }}</dd></div>
     </dl>
     {% endif %}
-    {% if census.reason %}<p class="census-unavailable" role="status">{{ census.reason }}</p>{% endif %}
-    <p class="section-caption">The tract containing the selected point is a local demographic proxy, not a restaurant trade area, exact neighborhood, customer count, or demand estimate. ACS values are survey estimates, not a current headcount.</p>
     {% if census.status != 'unavailable' %}
     <p class="census-uncertainty">90% margins of error: population {% if census.population_moe is not none %}&plusmn;{{ '{:,}'.format(census.population_moe) }}{% else %}unavailable{% endif %}; household income {% if census.income_moe is not none %}&plusmn;${{ '{:,}'.format(census.income_moe) }}{% else %}unavailable{% endif %}. Margins are retained but do not change scores.</p>
     {% endif %}
+    </details>
 </div>

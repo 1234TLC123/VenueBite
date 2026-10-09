@@ -1,0 +1,9 @@
+{% extends 'base.html' %}
+{% block title %}Delete Saved Site{% endblock %}
+{% block eyebrow %}SAVED SNAPSHOT{% endblock %}
+{% block heading %}Delete saved site?{% endblock %}
+{% block content %}
+<section class="delete-confirmation" aria-labelledby="delete-site-name"><h2 id="delete-site-name">{{ site.display_name }}</h2><p>{{ site.snapshot.location.label }} &middot; {{ site.snapshot.analysis.concept }}</p><p class="snapshot-notice">This deletes the stored snapshot. It does not change the location or create a new provider analysis. Deletion cannot be undone.</p>
+    <form action="{{ url_for('saved.delete', site_id=site.id) }}" method="post"><input type="hidden" name="csrf_token" value="{{ saved_csrf_token() }}"><input type="hidden" name="confirm" value="delete"><div class="action-row"><button class="command-button destructive-command" type="submit">{{ icon('x') }}Delete snapshot</button><a class="command-button" href="{{ url_for('saved.detail', site_id=site.id) }}">Cancel</a></div></form>
+</section>
+{% endblock %}

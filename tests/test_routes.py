@@ -19,7 +19,9 @@ def test_home_page_contains_post_form_and_empty_workspace(client):
     assert 'name="concept"' in html
     assert "Awaiting analysis" in html
     assert "Demo data only" in html
-    assert "Coming soon" in html
+    assert "Coming soon" not in html
+    assert "Saved Locations" not in html and "Find an Area" not in html
+    assert 'href="/compare"' in html and 'href="/saved"' in html
 
 
 def test_successful_analysis_renders_all_mvp_sections(client):

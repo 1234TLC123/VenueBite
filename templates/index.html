@@ -1,27 +1,21 @@
 {% extends 'base.html' %}
 {% block content %}
-<div class="demo-notice">
-    {{ icon('flask-conical') }}
-    <p><strong>Demo market analysis.</strong> Demo data only: all searches use the same sample dataset. Geographic search and maps use real location data when configured.</p>
-</div>
-
 <div class="analysis-grid empty-workspace">
-    {% include '_map_workspace.html' %}
-
     <section class="empty-score" aria-labelledby="empty-score-heading">
-        <p class="eyebrow">VENUEBITE OPPORTUNITY SCORE</p>
+        <span class="ready-symbol">{{ icon('scan-search', 'large-icon') }}</span>
+        <p class="eyebrow">READY FOR ANALYSIS</p>
         <h2 id="empty-score-heading">Awaiting analysis</h2>
-        <div class="score-value muted-score">--<span>/ 100</span></div>
-        <div class="empty-factor-list" aria-label="Pending factors">
-            {% for label in ['Population', 'Income', 'Rent', 'Competition'] %}
-            <div><span>{{ label }}</span><span class="skeleton-line"></span><span>--</span></div>
+        <p class="empty-state-label">Evidence snapshot pending</p>
+        <div class="pending-layers" aria-label="Pending evidence">
+            {% for label, symbol in [('Demographics', 'users'), ('Competition', 'store'), ('Site intelligence', 'building-2')] %}
+            <div>{{ icon(symbol) }}<span>{{ label }}</span><span class="small-label">Pending</span></div>
             {% endfor %}
         </div>
+        <details class="model-details">
+            <summary>Evidence availability</summary>
+            <p>Geography, Census and competition use real data when available. Demo data only: fallback market factors use the same sample dataset. Commercial terms are user-supplied and require verification.</p>
+        </details>
     </section>
+    {% include '_map_workspace.html' %}
 </div>
-<section class="empty-overview" aria-label="Pending analysis sections">
-    {% for name, icon_name in [('Area insights', 'chart-no-axes-combined'), ('Nearby competition', 'store'), ('Strengths & risks', 'list-checks')] %}
-    <div>{{ icon(icon_name) }}<h2>{{ name }}</h2><span class="small-label">PENDING</span></div>
-    {% endfor %}
-</section>
 {% endblock %}

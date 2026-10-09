@@ -2,45 +2,15 @@ import { fetchJson } from "./api.js";
 import { LocationSearch } from "./location-search.js";
 import { MapViewer } from "./map-viewer.js";
 import { bindAnalysisState, invalidateAnalysis } from "./analysis-state.js";
+import { bindAnalysisForm, bindReportArrival } from "./form-ui.js";
+import { bindSaveAction } from "./saved-sites.js";
 
 const form = document.querySelector("[data-analysis-form]");
-const submitButton = document.querySelector("[data-submit-button]");
-const submitLabel = document.querySelector("[data-submit-label]");
 bindAnalysisState();
 
-if (form && submitButton && submitLabel) {
-  form.addEventListener("submit", event => {
-    const demoOnly = Boolean(event.submitter?.hasAttribute("data-demo-fallback"));
-    if (demoOnly) {
-      for (const id of ["selection-token", "latitude", "longitude"]) document.getElementById(id).value = "";
-    } else if (form.dataset.geographyEnabled === "true" && !document.querySelector("#selection-token").value) {
-      event.preventDefault();
-      document.querySelector("#location-search-status").textContent = "Select a resolved location suggestion first.";
-      document.querySelector("#location").focus();
-      return;
-    }
-    submitButton.disabled = true;
-    submitButton.classList.add("is-loading");
-    submitLabel.textContent = "Analyzing...";
-    const message = demoOnly || form.dataset.geographyEnabled !== "true" ? "Analyzing demo data..." : "Retrieving Census and nearby competition...";
-    invalidateAnalysis(message);
-    const progress = document.querySelector("[data-analysis-progress]");
-    progress.textContent = message;
-    progress.hidden = false;
-    form.setAttribute("aria-busy", "true");
-  });
-
-  window.addEventListener("pageshow", () => {
-    submitButton.disabled = false;
-    submitButton.classList.remove("is-loading");
-    submitLabel.textContent = "Analyze Location";
-    form.removeAttribute("aria-busy");
-    document.querySelector("[data-analysis-progress]").hidden = true;
-  });
-
-  const invalidField = form.querySelector('[aria-invalid="true"]');
-  if (invalidField) invalidField.focus();
-}
+bindAnalysisForm(form, invalidateAnalysis);
+bindReportArrival();
+bindSaveAction(form);
 
 new LocationSearch(form.dataset.geographyEnabled === "true");
 try {

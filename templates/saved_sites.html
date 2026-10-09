@@ -1,0 +1,15 @@
+{% extends 'base.html' %}
+{% block title %}Saved Sites{% endblock %}
+{% block eyebrow %}CANDIDATE WORKSPACE{% endblock %}
+{% block heading %}Saved Sites{% endblock %}
+{% block content %}
+<div class="workspace-toolbar"><p>{{ listing.sites|length }} saved analyses &middot; Historical snapshots, not automatically fresh data</p><a class="command-button" href="{{ url_for('main.home') }}">{{ icon('scan-search') }}Analyze a location</a></div>
+{% if listing.unreadable_count %}<p class="snapshot-notice" role="status">{{ listing.unreadable_count }} unreadable or unsupported snapshots could not be displayed. Existing records have not been removed.</p>{% endif %}
+{% if listing.sites %}
+<form action="{{ url_for('saved.compare') }}" method="get" data-compare-picker>
+    <div class="selection-bar"><span data-selection-status role="status">0 / 4 selected</span><button class="command-button primary-command" type="submit" data-compare-submit>{{ icon('git-compare-arrows') }}Compare selected</button></div>
+    <div class="saved-sites-grid">{% for site in listing.sites %}{% include '_saved_site_card.html' %}{% endfor %}</div>
+</form>
+<p class="section-caption">Data Coverage measures usable model evidence, not restaurant success probability.</p>
+{% else %}<section class="saved-empty"><span class="ready-symbol">{{ icon('bookmark') }}</span><h2>No saved sites yet</h2><p>No analysis snapshots have been saved.</p><a class="command-button primary-command" href="{{ url_for('main.home') }}">{{ icon('scan-search') }}Analyze a location</a></section>{% endif %}
+{% endblock %}

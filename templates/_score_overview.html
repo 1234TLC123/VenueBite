@@ -1,0 +1,34 @@
+<section class="score-section" aria-labelledby="score-heading" data-analysis-output>
+    <div class="section-heading"><div><p class="eyebrow">DECISION OVERVIEW</p><h2 id="score-heading">Opportunity score</h2></div>{{ icon('chart-no-axes-combined') }}</div>
+    <div class="score-summary {{ report.score.classification_key }}">
+        <div class="score-ring">
+            <svg viewBox="0 0 160 160" aria-hidden="true" focusable="false">
+                <circle class="ring-track" cx="80" cy="80" r="70"/>
+                <circle class="ring-value" cx="80" cy="80" r="70" pathLength="100" stroke-dasharray="100" stroke-dashoffset="{{ 100 - report.score.overall_score }}"/>
+            </svg>
+            <div class="score-value">{{ '%.1f'|format(report.score.overall_score) }}<span>/ 100</span></div>
+        </div>
+        <div class="score-classification">
+            <span class="classification {{ report.score.classification_key }}">{{ report.score.classification }}</span>
+            <p>{{ report.score.model_label }}</p>
+            <p>Not a prediction of business success</p>
+        </div>
+    </div>
+    <div class="data-coverage" aria-labelledby="coverage-heading">
+        <div class="coverage-heading"><div><h3 id="coverage-heading">Data Coverage</h3><p>{{ report.coverage.label }}</p></div><strong>{{ '%g'|format(report.coverage.percent) }}%</strong></div>
+        <div class="coverage-segments" aria-hidden="true">
+            {% for evidence in report.coverage.factors %}<span class="coverage-segment evidence-{{ evidence.status }}" style="flex: {{ evidence.weight }}"><i style="width: {{ evidence.credit * 100 }}%"></i></span>{% endfor %}
+        </div>
+        <meter class="sr-only" min="0" max="100" value="{{ report.coverage.percent }}" aria-label="{{ 'Usable model evidence coverage, percent' if report.provenance['rent'].status == 'partial' else 'Real usable model data coverage, percent' }}">{{ report.coverage.percent }}%</meter>
+        <p>Evidence coverage &middot; not success probability.</p>
+        {% if report.coverage.warning %}<p class="coverage-warning">{{ icon('triangle-alert') }}{{ report.coverage.warning }}</p>{% endif %}
+    </div>
+    <div class="review-areas"><span class="small-label">KEY REVIEW AREAS</span><div>{% for item in report.explanations.risks %}<span>{{ item.label }}{% if item.status != 'real' %} &middot; verify{% endif %}</span>{% else %}<span>No factors below review threshold</span>{% endfor %}</div></div>
+    <details class="model-details"><summary>Analysis summary &amp; scoring assumptions</summary><p>{{ report.explanations.summary }}</p><p>{{ report.explanations.assumptions }}</p></details>
+    <details class="model-details quality-details">
+        <summary>{{ icon('info') }}Evidence &amp; data quality</summary>
+        <p>Coverage credits real factors fully, explicit partial factors halfway, and demo, fallback or unavailable factors not at all. Missing Census estimates reduce only their own factor coverage.</p>
+        <ul>{% for item in report.coverage.factors %}<li>{{ report.score.factors[loop.index0].label }}: {{ item.status }} &middot; {{ '%g'|format(item.coverage_points) }} coverage points</li>{% endfor %}</ul>
+        {% for note in report.explanations.quality_notes %}<p>{{ note }}</p>{% endfor %}
+    </details>
+</section>

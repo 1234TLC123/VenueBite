@@ -26,7 +26,7 @@ demo fixture, and Mapbox, respectively.
 
 - Population: more favorable tract population context, not density or demand.
 - Income: stronger household purchasing-power context, not restaurant spending.
-- Rent: more favorable commercial occupancy affordability; still fictional.
+- Rent: more favorable commercial occupancy affordability. Sprint 07 supports personal-budget fit from partial user evidence; otherwise the factor remains fictional demo 55.
 - Competition: lower observed pressure; direct and nearby matches matter more.
 
 ```text
@@ -59,19 +59,21 @@ Coverage is bounded 0-100. Labels: Very high at 90+, High at 70+, Moderate at 50
 Limited at 25+, Very limited below 25. Below 70%, a nonblocking verification
 notice appears. Coverage never changes the Opportunity Score or factor scores.
 
-A successful current hybrid is 30 + 30 + 0 + 20 = **80%**. Census failure leaves
+A successful hybrid without supported occupancy is 30 + 30 + 0 + 20 = **80%**. Census failure leaves
 20%; competition failure leaves 60%; both failures/demo-only leave 0%. One usable
 Census factor with live competition gives 50%. Genuine zero Census estimates
 receive full coverage even though their factor scores are zero.
 
 An aggregate partial Census response still gives full credit to each usable
 estimate and no credit to the missing estimate's demo fallback. The explicit
-`partial` credit is supported for factor-level incomplete inputs; current provider
-results are not newly assigned that status. Missing MOEs do not invalidate usable
+`partial` credit is supported for factor-level evidence; Census and Mapbox provider
+results retain their existing statuses. Budget-supported user rent uses partial credit in Sprint 07. Missing MOEs do not invalidate usable
 estimates. Capped Mapbox samples can be usable without being exhaustive. Coverage
 does not measure discovery completeness, precision, accuracy, statistical
 confidence, or success probability. It cannot reach 100% real support while rent
 remains demo.
+
+Sprint 07 adds user-supplied rent at `20 * 0.5 = 10` coverage points, yielding 90% with the other three real factors. With supported rent, Census failure gives 30%, competition failure gives 70%, and both give 10%. These credits never alter score weights or factor values. See [Commercial Occupancy Model v1](commercial-occupancy-v1.md). The expected-source trace field retains the original demo default for compatibility; the actual status/provider/model fields identify supported user rent.
 
 ## Provenance and Trace
 
@@ -155,8 +157,8 @@ Neither opportunity nor coverage is a validated probability or forecast. ACS is
 survey-based, pooled over five years and subject to margins of error; containing
 tracts are proxies, not trade areas. Shared-boundary points can legitimately fail
 as ambiguous. Mapbox discovery is capped, incomplete and category/matching
-dependent. Rent is still demo and can materially influence the score. No traffic,
-commercial-property cost, profitability or concept-demand data has been added.
+dependent. Unsupported rent is still demo and can materially influence the score. Sprint 07 adds user-supplied occupancy costs and budget fit, not verified commercial-market data. No traffic,
+profitability or concept-demand data has been added.
 
 Future calibration should use documented, outcome-independent research on factor
 normalization, comparable geographic context, missing-data policies, sample

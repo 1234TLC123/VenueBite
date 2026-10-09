@@ -1,6 +1,8 @@
 from pathlib import Path
 import os
 import secrets
+from tempfile import TemporaryDirectory
+from datetime import timezone
 
 from flask import Flask, render_template, request
 from dotenv import load_dotenv
@@ -15,6 +17,12 @@ from venuebite.services.demographic_service import DemographicService
 from venuebite.services.geography_service import GeographyService
 from venuebite.services.mock_data_service import MockLocationDataService
 from venuebite.services.site_intelligence_service import SiteIntelligenceService
+from venuebite.occupancy import RENT_BASES, LEASE_STRUCTURES
+from venuebite.db import Database, PersistenceError
+from venuebite.repositories.saved_site_repository import SavedSiteRepository
+from venuebite.services.saved_site_service import SavedSiteService
+from venuebite.services.comparison_service import ComparisonService, amount
+from venuebite.snapshots import utc_timestamp
 
 
 def create_app(config=None, *, data_provider=None, location_provider=None, poi_provider=None,
@@ -26,6 +34,7 @@ def create_app(config=None, *, data_provider=None, location_provider=None, poi_p
         __name__,
         template_folder=str(root / "templates"),
         static_folder=str(root / "static"),
+        instance_path=str(root / "instance"),
     )
     app.config.from_mapping(
         MAX_CONTENT_LENGTH=16 * 1024,
@@ -40,9 +49,43 @@ def create_app(config=None, *, data_provider=None, location_provider=None, poi_p
         REGRID_API_TOKEN=os.environ.get("REGRID_API_TOKEN", ""),
         REGRID_HTTP_TIMEOUT_SECONDS=os.environ.get("REGRID_HTTP_TIMEOUT_SECONDS", 8),
         REGRID_FALLBACK_RADIUS_METERS=os.environ.get("REGRID_FALLBACK_RADIUS_METERS", 25),
+        DATABASE=os.environ.get("VENUEBITE_DATABASE_PATH") or str(root / "instance" / "venuebite.db"),
+        SESSION_COOKIE_HTTPONLY=True,
+        SESSION_COOKIE_SAMESITE="Lax",
     )
     if config:
         app.config.update(config)
+    if app.testing and "DATABASE" not in (config or {}):
+        directory = TemporaryDirectory(prefix="venuebite-test-")
+        app.extensions["test_database_directory"] = directory
+        app.config["DATABASE"] = str(Path(directory.name) / "venuebite.db")
+    database_path = Path(app.config["DATABASE"])
+    if not database_path.is_absolute():
+        database_path = root / database_path
+    app.config["DATABASE"] = str(database_path)
+    database = Database(database_path)
+    app.extensions["saved_site_database"] = database
+    saved_sites = SavedSiteService(
+        SavedSiteRepository(database), app.config["SECRET_KEY"],
+        sensitive_values=tuple(app.config.get(key, "") for key in ("SECRET_KEY", "MAPBOX_ACCESS_TOKEN", "CENSUS_API_KEY", "REGRID_API_TOKEN")),
+    )
+    app.extensions["saved_site_service"] = saved_sites
+    app.extensions["comparison_service"] = ComparisonService(saved_sites)
+
+    @app.template_filter("snapshot_date")
+    def snapshot_date(value):
+        return utc_timestamp(value).astimezone(timezone.utc).strftime("%b %d, %Y %H:%M UTC")
+
+    app.jinja_env.filters["snapshot_amount"] = amount
+
+    @app.cli.command("init-db")
+    def init_db_command():
+        import click
+        try:
+            database.initialize()
+        except PersistenceError:
+            raise click.ClickException("Saved-site database could not be initialized.") from None
+        click.echo("Saved-site database initialized without removing existing records.")
     if app.testing and "MAPBOX_ACCESS_TOKEN" not in (config or {}):
         app.config["MAPBOX_ACCESS_TOKEN"] = ""
     if app.testing and "CENSUS_API_KEY" not in (config or {}):
@@ -92,17 +135,21 @@ def create_app(config=None, *, data_provider=None, location_provider=None, poi_p
             "map_enabled": bool(public_token(app.config["MAPBOX_ACCESS_TOKEN"])),
             "map_configuration_message": geographic_provider.configuration_message,
             "default_radius_miles": app.config["COMPETITION_RADIUS_MILES"],
+            "occupancy_rent_bases": RENT_BASES,
+            "occupancy_lease_structures": LEASE_STRUCTURES,
         }
 
     from venuebite.routes import bp
 
     app.register_blueprint(bp)
+    from venuebite.saved_routes import bp as saved_bp
+    app.register_blueprint(saved_bp)
 
     @app.errorhandler(413)
     def request_too_large(error):
         return render_template(
             "index.html", values={}, errors={},
-            page_error="This request is too large. Please submit a shorter location and restaurant concept.",
+            page_error="This request is too large. Please submit shorter location, concept and property terms.",
         ), 413
 
     @app.errorhandler(500)
@@ -124,7 +171,7 @@ def create_app(config=None, *, data_provider=None, location_provider=None, poi_p
             "worker-src 'self' blob:; child-src blob:; object-src 'none'; "
             "base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
         )
-        if request.method == "POST" or request.path.startswith("/api/"):
+        if request.method == "POST" or request.path.startswith(("/api/", "/saved", "/compare")):
             response.headers["Cache-Control"] = "no-store"
         return response
 

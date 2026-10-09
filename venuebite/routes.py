@@ -4,7 +4,11 @@ from venuebite.providers.location_provider import LocationError, validate_identi
 from venuebite.providers.mapbox_provider import public_token
 from venuebite.services import DataProviderError
 from venuebite.services.analysis_service import AnalysisService
+from venuebite.services.occupancy_service import normalize_candidate_input
 from venuebite.distance import ALLOWED_RADIUS_MILES
+from venuebite.db import PersistenceError
+from venuebite.services.saved_site_service import SaveError
+from venuebite.snapshots import SnapshotError
 
 bp = Blueprint("main", __name__)
 FIELD_LIMITS = {"location": 200, "concept": 120}
@@ -32,9 +36,28 @@ def validate_form(form):
 @bp.route("/", methods=["GET", "POST"])
 def home():
     if request.method == "GET":
+        if "saved_id" in request.args:
+            if len(request.args.getlist("saved_id")) != 1:
+                return render_template("index.html", values={}, errors={}, page_error="Choose one saved site to analyze again."), 400
+            try:
+                service = current_app.extensions["saved_site_service"]
+                site = service.get(request.args["saved_id"])
+                if site is None:
+                    return render_template("index.html", values={}, errors={}, page_error="That saved site no longer exists."), 404
+                values = service.prefill(site)
+                return render_template("index.html", values=values, errors={},
+                                       reanalysis_snapshot=site)
+            except (SaveError, SnapshotError) as error:
+                return render_template("index.html", values={}, errors={}, page_error=str(error)), 400
+            except PersistenceError as error:
+                return render_template("index.html", values={}, errors={}, page_error=str(error)), 503
         return render_template("index.html", values={}, errors={})
 
     values, errors = validate_form(request.form)
+    occupancy_input = normalize_candidate_input(request.form)
+    values.update(occupancy_input.values)
+    values["occupancy_provided"] = occupancy_input.candidate.provided or bool(occupancy_input.errors)
+    errors.update(occupancy_input.errors)
     radius = request.form.get("radius_miles", str(current_app.config["COMPETITION_RADIUS_MILES"]))
     if len(request.form.getlist("radius_miles")) > 1 or radius not in {str(value) for value in ALLOWED_RADIUS_MILES}:
         errors["radius_miles"] = "Choose a 1, 3, or 5 mile radius."
@@ -79,6 +102,7 @@ def home():
             values["location"], values["concept"],
             geographic_location=geographic_location if request.form.get("demo_only") != "1" else None,
             radius_miles=int(radius),
+            candidate_property=occupancy_input.candidate,
         )
     except DataProviderError:
         current_app.logger.exception("Location data provider failed")
@@ -89,9 +113,17 @@ def home():
 
     competition_payload = report.competition.map_payload(geographic_location, values["concept"]) if report.competition else None
     parcel_payload = report.site.map_payload(geographic_location, values["concept"], int(radius)) if report.site else None
+    snapshot_token, save_unavailable = "", ""
+    if geographic_location and request.form.get("demo_only") != "1":
+        try:
+            snapshot_token = current_app.extensions["saved_site_service"].prepare(report, geographic_location, values)
+        except (SaveError, SnapshotError) as error:
+            save_unavailable = str(error)
     return render_template(
         "results.html", values=values, errors={}, report=report, geographic_location=geographic_location,
         competition_payload=competition_payload, parcel_payload=parcel_payload,
+        snapshot_token=snapshot_token, save_unavailable=save_unavailable,
+        save_name=f"{values['concept']} candidate"[:140],
     )
 
 

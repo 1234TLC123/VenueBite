@@ -150,7 +150,8 @@ def test_conservative_development_evidence(updates, state):
     result = SiteIntelligenceService(Parcels((replace(PARCEL, **updates),))).analyze(LOCATION)
     assert result.development_state == state
     notes = " ".join(result.considerations)
-    assert "Missing data is unknown" in notes and "Commercial occupancy cost remains demo" in notes
+    assert "Missing data is unknown" in notes and "Assessor values are not asking rent" in notes
+    assert "parcel facts do not change" in notes.lower()
     if state == "unknown":
         assert "missing fields do not mean vacant land" in notes
     if state == "no_structure_evidence":

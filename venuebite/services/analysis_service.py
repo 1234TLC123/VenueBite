@@ -11,6 +11,8 @@ from venuebite.services.competition_service import CompetitionAnalysis
 from venuebite.services.demographic_service import DemographicAnalysis
 from venuebite.services.explanation_service import ExplanationReport, explain_analysis
 from venuebite.services.site_intelligence_service import SiteIntelligence
+from venuebite.occupancy import MODEL_VERSION as OCCUPANCY_MODEL_VERSION, MODEL_DESCRIPTION
+from venuebite.services.occupancy_service import OccupancyAnalysis, OccupancyService
 
 
 @dataclass(frozen=True)
@@ -40,6 +42,7 @@ class AnalysisReport:
     explanations: ExplanationReport | None = None
     scoring_trace: ScoreTrace | None = None
     site: SiteIntelligence | None = None
+    occupancy: OccupancyAnalysis | None = None
 
 
 class AnalysisService:
@@ -49,7 +52,7 @@ class AnalysisService:
         self.demographic_service = demographic_service
         self.site_service = site_service
 
-    def analyze(self, location, concept, *, geographic_location=None, radius_miles=3):
+    def analyze(self, location, concept, *, geographic_location=None, radius_miles=3, candidate_property=None):
         data = self.provider.get_location_data(location, concept)
         factors = dict(data.factor_scores)
         provenance = {key: FactorProvenance("demo", "Demo fixture", "Demo data") for key in factors}
@@ -83,16 +86,29 @@ class AnalysisService:
                 else:
                     provenance[key] = FactorProvenance("fallback", "Demo fixture", "Demo data", reason=census.reason)
             data = replace(data, area_insights=_demographic_insights(data, census, competition))
-        if any(source.real for source in provenance.values()):
+        occupancy = OccupancyService().analyze(candidate_property, selected_address=location)
+        if occupancy.status == "not_provided":
+            occupancy = None
+        elif occupancy.supported:
+            factors["rent"] = occupancy.model.score
+            provenance["rent"] = FactorProvenance(
+                "partial", "user_supplied", "PARTIAL EVIDENCE", model_version=OCCUPANCY_MODEL_VERSION,
+                description=MODEL_DESCRIPTION, reason=occupancy.candidate.source_label,
+            )
+        else:
+            provenance["rent"] = replace(provenance["rent"], reason=occupancy.fallback_reason)
+        if occupancy and occupancy.costs.base is not None:
+            data = replace(data, area_insights=tuple(item for item in data.area_insights if item.key != "commercial_rent"))
+        if any(source.status in {"real", "partial"} for source in provenance.values()):
             data = replace(data, is_demo=False, source_label="Hybrid analysis")
         data = replace(data, factor_scores=MappingProxyType(factors))
         score = calculate_opportunity(factors)
         provenance = MappingProxyType(provenance)
         coverage = calculate_data_coverage({key: source.status for key, source in provenance.items()})
-        explanations = explain_analysis(score, provenance, coverage, demographics=demographics, competition=competition)
+        explanations = explain_analysis(score, provenance, coverage, demographics=demographics, competition=competition, occupancy=occupancy)
         trace = build_score_trace(score, provenance, coverage)
         site = self.site_service.analyze(geographic_location) if self.site_service else None
-        return AnalysisReport(data, score, competition, demographics, provenance, coverage, explanations, trace, site)
+        return AnalysisReport(data, score, competition, demographics, provenance, coverage, explanations, trace, site, occupancy)
 
 
 def _demographic_insights(data, census, competition):

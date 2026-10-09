@@ -1,0 +1,33 @@
+<section class="factor-section" aria-labelledby="factor-heading" data-analysis-output>
+    <div class="section-heading"><div><p class="eyebrow">THE FOUR-FACTOR MODEL</p><h2 id="factor-heading">Factor intelligence</h2></div><span class="small-label">Higher is more favorable</span></div>
+    <div class="factor-grid">
+        {% for factor in report.score.factors %}
+        {% set source = report.provenance[factor.key] %}
+        <article class="factor-card {{ factor.signal }} factor-{{ factor.key }}">
+            <div class="factor-header"><h3>{{ icon(factor.icon) }}{{ factor.label }}</h3><span>{{ factor.weight_percent }}% weight</span></div>
+            <div class="factor-value">{{ '%g'|format(factor.score) }}<span>/ 100</span></div>
+            <meter min="0" max="100" value="{{ factor.score }}" aria-label="{{ factor.label }} score">{{ factor.score }}</meter>
+            <span class="factor-source evidence-{{ source.status }} {{ 'real-source' if source.real else '' }}" data-factor-evidence="{{ source.status }}">{{ source.label }}{% if source.status == 'fallback' %} (fallback){% endif %}</span>
+            <div class="factor-contribution"><span>Contribution</span><strong>{{ factor.weighted_points_label }} points</strong></div>
+            <details class="factor-details">
+                <summary>Source &amp; model<span class="sr-only"> for {{ factor.label }}</span></summary>
+                <p>{{ source.provider }}{% if source.vintage %} &middot; ACS {{ source.vintage }} 5-year &middot; tract{% endif %}{% if source.model_version %}<br>{{ source.model_version }}{% endif %}</p>
+                {% if source.geoid %}<p>GEOID {{ source.geoid }}</p>{% endif %}
+                <p>{% if source.real and factor.key in ('population', 'income') or factor.key == 'rent' and source.status == 'partial' %}{{ source.description }}{% elif factor.key == 'competition' and live_competition %}Higher scores mean lower observed pressure in a limited search sample.{% else %}{{ factor.description }}{% endif %}</p>
+                {% if source.reason %}<p>{{ source.reason }}</p>{% endif %}
+                {% if factor.key == 'rent' %}<p>{% if report.occupancy and report.occupancy.supported %}Commercial Occupancy Model v1 &middot; Budget utilization {{ report.occupancy.model.utilization_label }}. User-supplied terms require verification.{% else %}Commercial rent remains demo; verify live occupancy costs.{% endif %}</p>{% endif %}
+            </details>
+        </article>
+        {% endfor %}
+    </div>
+    <div class="contribution-chart" aria-labelledby="contribution-heading">
+        <div><h3 id="contribution-heading">Weighted contribution</h3><p class="small-label">Common scale: 0&ndash;30 points</p></div>
+        <div class="contribution-bars">
+        {% for factor in report.score.factors %}
+            <div class="contribution-row factor-{{ factor.key }}" data-contribution="{{ factor.weighted_points_label }}">
+                <span>{{ factor.label }}</span><div class="contribution-track" aria-hidden="true"><i style="width: {{ factor.weighted_points / 30 * 100 }}%"></i></div><strong>{{ factor.weighted_points_label }}<span class="sr-only"> weighted points</span></strong>
+            </div>
+        {% endfor %}
+        </div>
+    </div>
+</section>

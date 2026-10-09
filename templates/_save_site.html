@@ -1,0 +1,12 @@
+<details class="save-site" data-analysis-output>
+    <summary>{{ icon('bookmark') }}Save site</summary>
+    <div class="save-controls">
+        <div class="form-field"><label for="saved-site-name">Saved site name</label><div class="input-wrap"><input id="saved-site-name" name="display_name" form="analysis-form" maxlength="140" value="{{ save_name }}"></div></div>
+        <div class="form-field"><label for="saved-location-label">Your location label</label><div class="input-wrap"><input id="saved-location-label" name="location_label" form="analysis-form" maxlength="200" placeholder="City or site label" aria-describedby="save-retention-note"></div></div>
+        <input type="hidden" name="snapshot_token" form="analysis-form" value="{{ snapshot_token }}" data-snapshot-token>
+        <input type="hidden" name="csrf_token" form="analysis-form" value="{{ saved_csrf_token() }}">
+        <button class="command-button primary-command" type="submit" form="analysis-form" formaction="{{ url_for('saved.save') }}" data-save-submit>{{ icon('bookmark') }}<span>Save snapshot</span></button>
+    </div>
+    <p class="section-caption" id="save-retention-note">Historical model snapshot. Enter your own location label; Search Box coordinates, location details and restaurant records are not retained.</p>
+    <p data-save-status role="status" hidden></p>
+</details>

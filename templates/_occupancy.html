@@ -1,0 +1,37 @@
+<section class="occupancy-section" aria-labelledby="occupancy-heading" data-analysis-output data-occupancy-status="{{ report.occupancy.status }}">
+    <div class="section-heading"><div><p class="eyebrow">BUDGET FIT &middot; USD</p><h2 id="occupancy-heading">Commercial occupancy</h2></div><span class="data-badge evidence-partial">User-supplied listing terms &middot; USD</span></div>
+    <p class="occupancy-evidence">User-supplied terms are not independently verified. Only supplied costs are included.</p>
+    {% if report.occupancy.costs.total %}
+    <div class="occupancy-cost-overview"><div><span>Estimated known occupancy</span><strong>{{ report.occupancy.costs.total.label }}</strong></div>{% for fact in report.occupancy.facts if fact.label == 'Monthly occupancy budget (USD)' %}<div><span>Monthly budget</span><strong>{{ fact.value }}</strong></div>{% endfor %}</div>
+    {% endif %}
+    {% if report.occupancy.supported %}
+    <div class="budget-visual">
+        <div><h3>Budget utilization</h3><strong>{{ report.occupancy.model.utilization_label }}</strong></div>
+        <div class="budget-track">
+            <progress max="150" value="{{ [report.occupancy.model.ratio * 100, 150]|min }}" aria-label="Occupancy budget utilization, visual scale capped at 150 percent" aria-valuetext="{{ report.occupancy.model.utilization_label }} of stated budget">{{ report.occupancy.model.utilization_label }}</progress><i class="budget-threshold" aria-hidden="true"></i>
+        </div>
+        <div class="budget-scale" aria-hidden="true"><span>0%</span><span>100% budget</span><span>150%+</span></div>
+        <p>{{ report.occupancy.model.level }} &middot; {{ report.occupancy.budget_statement }}</p>
+    </div>
+    {% endif %}
+    <dl class="occupancy-facts">
+        {% for fact in report.occupancy.facts %}<div><dt>{{ fact.label }}</dt><dd>{{ fact.value }}{% if fact.detail %}<span>{{ fact.detail }}</span>{% endif %}</dd></div>{% endfor %}
+    </dl>
+    <div class="occupancy-model">
+        {% if report.occupancy.supported %}
+        <div><h3>Rent factor <strong>{{ '%g'|format(report.occupancy.model.score) }} / 100</strong></h3><span class="factor-source">PARTIAL EVIDENCE</span></div>
+        <p>Commercial Occupancy Model v1 &middot; 20% weight &middot; {{ report.score.factors[2].weighted_points_label }} points<br>{{ report.occupancy.budget_statement }}</p>
+        {% else %}
+        <div><h3>Rent factor <strong>{{ '%g'|format(report.score.factors[2].score) }} / 100</strong></h3><span class="factor-source">DEMO</span></div>
+        <p>{{ report.occupancy.fallback_reason }}</p>
+        {% endif %}
+    </div>
+    {% if not report.occupancy.supported %}<p class="occupancy-summary">{{ report.occupancy.summary }}</p>{% endif %}
+    <details class="occupancy-cautions"><summary>Cost assumptions &amp; verification items</summary><ul>{% for warning in report.occupancy.warnings %}<li>{{ warning }}</li>{% endfor %}</ul></details>
+    <p class="occupancy-limitation">Budget fit is relative to your stated USD occupancy budget, not submarket rent, fair market value, restaurant revenue or profitability.</p>
+    <details class="occupancy-provenance"><summary>{{ icon('info') }}Listing source &amp; supplied notes</summary>
+        <p>{{ report.occupancy.candidate.source_label }} &middot; user_supplied &middot; not independently verified</p>
+        {% if report.occupancy.candidate.source_url %}<a href="{{ report.occupancy.candidate.source_url }}" target="_blank" rel="noopener noreferrer">Listing / source record</a>{% endif %}
+        {% if report.occupancy.candidate.notes %}<p class="occupancy-notes">{{ report.occupancy.candidate.notes }}</p>{% endif %}
+    </details>
+</section>
