@@ -8,9 +8,11 @@ from math import isfinite
 import re
 
 from venuebite.providers.site_provider import safe_source_url
+from venuebite.regulatory import validate_regulatory
 
 
 SNAPSHOT_VERSION = 2
+REGULATORY_SNAPSHOT_VERSION = 3
 COMPETITION_SOURCE_NOTE = "Live analysis source: Mapbox Search Box. Business records and geography are not retained."
 MAX_SNAPSHOT_BYTES = 64 * 1024
 FACTOR_KEYS = ("population", "income", "rent", "competition")
@@ -89,10 +91,16 @@ def _safe_tree(value, depth=0):
 
 
 def _validate_snapshot(snapshot):
-    if not isinstance(snapshot, dict) or set(snapshot) != {"snapshot_version", "factors", *SECTIONS}:
+    if not isinstance(snapshot, dict):
         raise SnapshotError()
-    if type(snapshot["snapshot_version"]) is not int or snapshot["snapshot_version"] != SNAPSHOT_VERSION:
+    version = snapshot.get("snapshot_version")
+    if type(version) is not int or version not in (SNAPSHOT_VERSION, REGULATORY_SNAPSHOT_VERSION):
         raise SnapshotError()
+    extra = {"regulatory"} if version == REGULATORY_SNAPSHOT_VERSION else set()
+    if set(snapshot) != {"snapshot_version", "factors", *SECTIONS, *extra}:
+        raise SnapshotError()
+    if extra:
+        validate_regulatory(snapshot["regulatory"])
     for section, fields in SECTIONS.items():
         if not isinstance(snapshot[section], dict) or set(snapshot[section]) != set(fields):
             raise SnapshotError()

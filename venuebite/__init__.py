@@ -23,10 +23,13 @@ from venuebite.repositories.saved_site_repository import SavedSiteRepository
 from venuebite.services.saved_site_service import SavedSiteService
 from venuebite.services.comparison_service import ComparisonService, amount
 from venuebite.snapshots import utc_timestamp
+from venuebite.providers.denver_zoning_provider import DenverZoningProvider
+from venuebite.services.regulatory_service import RegulatoryService
+from venuebite.regulatory import PROJECT_TYPES, PROJECT_QUESTIONS, PROJECT_FIELDS, ANSWERS, EVIDENCE_LABELS as REGULATORY_EVIDENCE_LABELS
 
 
 def create_app(config=None, *, data_provider=None, location_provider=None, poi_provider=None,
-               census_geo_provider=None, demographic_provider=None, site_provider=None):
+               census_geo_provider=None, demographic_provider=None, site_provider=None, zoning_provider=None):
     root = Path(__file__).resolve().parent.parent
     if not (config and config.get("TESTING")):
         load_dotenv(root / ".env", override=False)
@@ -52,6 +55,8 @@ def create_app(config=None, *, data_provider=None, location_provider=None, poi_p
         DATABASE=os.environ.get("VENUEBITE_DATABASE_PATH") or str(root / "instance" / "venuebite.db"),
         SESSION_COOKIE_HTTPONLY=True,
         SESSION_COOKIE_SAMESITE="Lax",
+        REGULATORY_ENABLED=os.environ.get("REGULATORY_ENABLED", "true").lower() == "true",
+        REGULATORY_HTTP_TIMEOUT_SECONDS=os.environ.get("REGULATORY_HTTP_TIMEOUT_SECONDS", 6),
     )
     if config:
         app.config.update(config)
@@ -127,6 +132,12 @@ def create_app(config=None, *, data_provider=None, location_provider=None, poi_p
         ),
         fallback_radius_meters=app.config["REGRID_FALLBACK_RADIUS_METERS"],
     )
+    app.extensions["regulatory_service"] = RegulatoryService(
+        zoning_provider if zoning_provider is not None else DenverZoningProvider(
+            enabled=app.config["REGULATORY_ENABLED"] and not app.testing,
+            timeout=app.config["REGULATORY_HTTP_TIMEOUT_SECONDS"],
+        )
+    )
 
     @app.context_processor
     def geography_context():
@@ -137,6 +148,11 @@ def create_app(config=None, *, data_provider=None, location_provider=None, poi_p
             "default_radius_miles": app.config["COMPETITION_RADIUS_MILES"],
             "occupancy_rent_bases": RENT_BASES,
             "occupancy_lease_structures": LEASE_STRUCTURES,
+            "regulatory_project_types": PROJECT_TYPES,
+            "regulatory_project_questions": PROJECT_QUESTIONS,
+            "regulatory_project_fields": PROJECT_FIELDS,
+            "regulatory_answers": ANSWERS,
+            "regulatory_evidence_labels": REGULATORY_EVIDENCE_LABELS,
         }
 
     from venuebite.routes import bp

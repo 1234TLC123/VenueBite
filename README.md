@@ -1,6 +1,6 @@
 # VenueBite
 
-VenueBite is a restaurant location-intelligence application built with Flask, Jinja, and vanilla JavaScript. Sprint 09 adds local SQLite Saved Sites and evidence-aware historical comparison to the Sprint 08 visual system, commercial occupancy, Mapbox explorer, competition, Census demographics, Regrid parcels, and Score Model v2. Parcel intelligence remains separate from the four-factor score and Data Coverage. Rent remains demo unless sufficient terms and a personal budget support partial evidence; scores remain unvalidated heuristics.
+VenueBite is a restaurant location-intelligence application built with Flask, Jinja, and vanilla JavaScript. Sprint 10 adds official Denver zoning identification and an evidence-aware regulatory review workflow to SQLite Saved Sites, historical comparison, the futuristic dashboard, commercial occupancy, Mapbox explorer, competition, Census demographics, Regrid parcels, and Score Model v2. Parcel and regulatory intelligence remain separate from the four-factor score and Data Coverage. Rent remains demo unless sufficient terms and a personal budget support partial evidence; scores remain unvalidated heuristics.
 
 ## Current Features
 
@@ -16,6 +16,7 @@ VenueBite is a restaurant location-intelligence application built with Flask, Ji
 - Loading, empty, error, retry, and missing-configuration states; explicit demo-only fallback when geographic search fails.
 - Server-side validation, signed geographic selections, replaceable geographic and market-data providers, and offline automated tests.
 - SQLite Saved Sites, historical analysis detail, confirmed deletion, and evidence-aware 2-4 site comparison. Find an Area remains hidden; no accounts are implemented.
+- Official Denver county-boundary and zoning point lookup; conservative code-framework identification, optional restaurant project plans, sourced permit/review topics, and deterministic next steps. District identification is not restaurant permission or legal approval.
 
 ## Real and Demo Data
 
@@ -365,5 +366,17 @@ Saved Sites lists historical analyses. Detail preserves actual analysis/save UTC
 Tests use isolated temporary databases and fake providers, never the development DB or live Regrid. A stable server-side `SECRET_KEY` keeps in-progress signed forms/session cookies usable through restart; records survive regardless. Saved records are shared local application data, not account-private records. SQLite is not encrypted. Restrict access to the machine/database and do not expose this development app publicly. Future accounts require owner migrations and authorization on every read/write; PostgreSQL can replace the repository's storage boundary without rewriting scoring.
 
 See [persistence design](docs/saved-sites-comparison-v1.md) and [Sprint 09 engineering report](docs/sprint09-engineering-report.md).
+
+## Sprint 10: Zoning and Regulatory Feasibility
+
+Expand **Restaurant project details** to specify a project type and proposed alcohol, patio, drive-through, renovation and change-of-use plans. Unspecified is distinct from not proposed. Analyze a freshly selected point: official Denver GIS determines county jurisdiction before zoning, not the mailing label, Census tract or Regrid zoning attribute. Denver-only live coverage is intentional. Outside coverage, ambiguous boundaries and provider outages have explicit states; other analysis services continue independently.
+
+District and GIS code-family facts are sourced separately from government guidance and questions requiring confirmation. Denver Zoning Code versus Former Chapter 59 is reported conservatively; PUD, overlay, waiver and condition documents are not legally interpreted. Every project still requires official restaurant-use classification review. No numeric regulatory score, approval percentage, guessed fee or approval time is generated. Retrieval timestamps are not legal effective dates. Curated guidance links display their verification date and are not claimed to be re-fetched for each analysis.
+
+No new key is needed. `REGULATORY_ENABLED=true` enables the public Denver provider; `REGULATORY_ENABLED=false` yields an unavailable review while preserving the rest of the app. `REGULATORY_HTTP_TIMEOUT_SECONDS=6` bounds each request; only positive values up to 15 seconds are accepted, otherwise the timeout falls back to 6. Restart Flask after environment changes. All automated tests disable the default network provider and use isolated temporary databases.
+
+New completed analyses use snapshot format 3 with only normalized regulatory facts, project inputs, review text, source links and dates. Database schema stays 3; existing format-2 snapshots are not rewritten or enriched and show **Not captured**. Saved detail and Compare read stored evidence only, without current rule interpretation, scoring recalculation or provider refresh. Regulatory evidence never increases Data Coverage or changes Opportunity Score. No Search Box data or regulatory geometry/raw response is persisted.
+
+Denver data attribution and retention limitations are documented in [Regulatory Feasibility v1](docs/zoning-regulatory-feasibility-v1.md). See [Sprint 10 engineering report](docs/sprint10-engineering-report.md) for actual live checks, test counts, database auditing and known limitations. Before any lease decision, have Denver staff verify the exact premises, statutory uses, overlays, current code and project-specific approvals.
 
 Icons are from [Lucide 0.468.0](https://github.com/lucide-icons/lucide/tree/0.468.0), with the license in `static/icons/LICENSE`. Maps and imagery retain Mapbox's built-in attribution.

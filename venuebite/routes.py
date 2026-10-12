@@ -9,6 +9,7 @@ from venuebite.distance import ALLOWED_RADIUS_MILES
 from venuebite.db import PersistenceError
 from venuebite.services.saved_site_service import SaveError
 from venuebite.snapshots import SnapshotError
+from venuebite.regulatory import normalize_project
 
 bp = Blueprint("main", __name__)
 FIELD_LIMITS = {"location": 200, "concept": 120}
@@ -58,6 +59,9 @@ def home():
     values.update(occupancy_input.values)
     values["occupancy_provided"] = occupancy_input.candidate.provided or bool(occupancy_input.errors)
     errors.update(occupancy_input.errors)
+    regulatory_values, regulatory_errors = normalize_project(request.form)
+    values.update(regulatory_values)
+    errors.update(regulatory_errors)
     radius = request.form.get("radius_miles", str(current_app.config["COMPETITION_RADIUS_MILES"]))
     if len(request.form.getlist("radius_miles")) > 1 or radius not in {str(value) for value in ALLOWED_RADIUS_MILES}:
         errors["radius_miles"] = "Choose a 1, 3, or 5 mile radius."
@@ -96,6 +100,7 @@ def home():
         current_app.extensions["location_data_provider"], current_app.extensions["competition_service"],
         current_app.extensions["demographic_service"],
         current_app.extensions["site_intelligence_service"],
+        current_app.extensions["regulatory_service"],
     )
     try:
         report = service.analyze(
@@ -103,6 +108,7 @@ def home():
             geographic_location=geographic_location if request.form.get("demo_only") != "1" else None,
             radius_miles=int(radius),
             candidate_property=occupancy_input.candidate,
+            regulatory_project=regulatory_values,
         )
     except DataProviderError:
         current_app.logger.exception("Location data provider failed")

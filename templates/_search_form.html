@@ -50,6 +50,7 @@
         {% if errors.get('radius_miles') %}<p class="field-error" id="radius-error" role="alert">{{ errors.radius_miles }}</p>{% endif %}
     </div>
     {% include '_occupancy_form.html' %}
+    {% include '_regulatory_form.html' %}
     <button class="analyze-button" type="submit" data-submit-button>
         {{ icon('scan-search') }}<span data-submit-label>Analyze Location</span>
     </button>

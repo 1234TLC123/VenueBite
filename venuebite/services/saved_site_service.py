@@ -1,5 +1,6 @@
 """Completed-analysis snapshots, freshness validation and explicit user saving."""
 
+from copy import deepcopy
 from datetime import datetime, timezone
 from hashlib import sha256
 import hmac
@@ -12,12 +13,13 @@ from itsdangerous import BadData, URLSafeTimedSerializer
 from venuebite.occupancy import MODEL_VERSION as OCCUPANCY_VERSION
 from venuebite.providers.site_provider import safe_source_url
 from venuebite.services.occupancy_service import FIELD_NAMES, ENUM_DEFAULTS
-from venuebite.snapshots import SNAPSHOT_VERSION, COMPETITION_SOURCE_NOTE, SnapshotError, encode_snapshot, validate_snapshot
+from venuebite.snapshots import SNAPSHOT_VERSION, REGULATORY_SNAPSHOT_VERSION, COMPETITION_SOURCE_NOTE, SnapshotError, encode_snapshot, validate_snapshot
+from venuebite.regulatory import PROJECT_FIELDS
 
 
 NAME_LIMIT = 140
 SAVE_TOKEN_AGE_SECONDS = 7200
-FORM_FIELDS = ("location", "concept", "radius_miles", "selection_token", "latitude", "longitude", *FIELD_NAMES)
+FORM_FIELDS = ("location", "concept", "radius_miles", "selection_token", "latitude", "longitude", *FIELD_NAMES, *PROJECT_FIELDS)
 
 
 class SaveError(ValueError):
@@ -36,7 +38,7 @@ def validated_id(value):
 def form_context(values):
     context = {}
     for field in FORM_FIELDS:
-        value = values.get(field, ENUM_DEFAULTS.get(field, "3" if field == "radius_miles" else ""))
+        value = values.get(field, "unknown" if field in PROJECT_FIELDS else ENUM_DEFAULTS.get(field, "3" if field == "radius_miles" else ""))
         context[field] = str(value).strip()
     for field in ("location", "concept"):
         context[field] = " ".join(context[field].split())
@@ -142,6 +144,9 @@ def build_snapshot(report, location, values, *, timestamp=None):
                          "quality_notes": list(report.explanations.quality_notes), "strengths": _explanation_items(report.explanations.strengths),
                          "risks": _explanation_items(report.explanations.risks)},
     }
+    if report.regulatory is not None:
+        snapshot["snapshot_version"] = REGULATORY_SNAPSHOT_VERSION
+        snapshot["regulatory"] = deepcopy(report.regulatory)
     validate_snapshot(snapshot)
     return snapshot
 
@@ -213,4 +218,7 @@ class SavedSiteService:
                              ("additional_occupancy_rate", "additional_rate"), ("additional_occupancy_basis", "additional_basis"),
                              ("monthly_occupancy_budget", "monthly_budget"), ("source_label", "source_label"), ("source_url", "source_url"), ("occupancy_notes", "notes")):
             values[field] = occupancy[saved] if occupancy[saved] not in (None, "") else ENUM_DEFAULTS.get(field, "")
+        project = snapshot.get("regulatory", {}).get("project", {})
+        for field in PROJECT_FIELDS:
+            values[field] = project.get(field.removeprefix("regulatory_"), "unknown")
         return values

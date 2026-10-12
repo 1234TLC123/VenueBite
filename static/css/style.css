@@ -104,6 +104,20 @@ select[aria-invalid="true"], textarea[aria-invalid="true"], .input-wrap.invalid 
 #location-suggestions span { font-size: 11px; color: var(--muted); margin-top: 2px; }
 .search-attribution { color: var(--muted); font-size: 10px; padding: 10px 12px; border-top: 1px solid var(--line); }
 .occupancy-inputs { grid-column: 1 / -1; border-top: 1px solid var(--line); padding-top: 12px; }
+.regulatory-form-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; padding-top: 16px; }
+.regulatory-section { min-width: 0; padding: 24px 0; border-top: 1px solid var(--line); }
+.regulatory-summary .site-facts { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.regulatory-section dd, .regulatory-section li, .regulatory-section .source-link { overflow-wrap: anywhere; }
+.regulatory-section h3 { font-size: 15px; margin: 18px 0 10px; }
+.regulatory-next { padding-left: 24px; color: var(--ink); }
+.regulatory-next li { padding: 5px 0; }
+.regulatory-disclosures { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
+.regulatory-checklist { list-style: none; margin: 0; padding: 0; }
+.regulatory-checklist li { display: flex; justify-content: space-between; gap: 20px; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--line); }
+.regulatory-checklist li span { display: block; margin-top: 6px; }
+.regulatory-checklist .source-link { flex-shrink: 0; min-height: 44px; display: inline-flex; align-items: center; }
+@media (max-width: 800px) { .regulatory-form-grid, .regulatory-summary .site-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 540px) { .regulatory-form-grid, .regulatory-summary .site-facts { grid-template-columns: minmax(0, 1fr); } .regulatory-section .section-heading { flex-wrap: wrap; } .regulatory-checklist li { flex-direction: column; align-items: flex-start; gap: 4px; } }
 .occupancy-inputs > summary { min-height: 32px; font-size: 12px; }
 .occupancy-inputs > summary .icon { width: 17px; height: 17px; margin: 0 8px; }
 .occupancy-inputs > summary .small-label { margin-left: 12px; }

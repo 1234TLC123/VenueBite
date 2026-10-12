@@ -72,7 +72,7 @@ def detail(site_id):
         return error_page(str(error), 422)
     except PersistenceError as error:
         return error_page(str(error), 503)
-    return render_template("saved_detail.html", site=site, sections=snapshot_sections(site.snapshot), saved_workspace=True)
+    return render_template("saved_detail.html", site=site, sections=snapshot_sections(site.snapshot, include_regulatory=False), saved_workspace=True)
 
 
 @bp.get("/saved/<site_id>/delete-confirmation")

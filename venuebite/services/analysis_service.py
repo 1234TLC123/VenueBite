@@ -43,16 +43,18 @@ class AnalysisReport:
     scoring_trace: ScoreTrace | None = None
     site: SiteIntelligence | None = None
     occupancy: OccupancyAnalysis | None = None
+    regulatory: dict | None = None
 
 
 class AnalysisService:
-    def __init__(self, provider: LocationDataProvider, competition_service=None, demographic_service=None, site_service=None):
+    def __init__(self, provider: LocationDataProvider, competition_service=None, demographic_service=None, site_service=None, regulatory_service=None):
         self.provider = provider
         self.competition_service = competition_service
         self.demographic_service = demographic_service
         self.site_service = site_service
+        self.regulatory_service = regulatory_service
 
-    def analyze(self, location, concept, *, geographic_location=None, radius_miles=3, candidate_property=None):
+    def analyze(self, location, concept, *, geographic_location=None, radius_miles=3, candidate_property=None, regulatory_project=None):
         data = self.provider.get_location_data(location, concept)
         factors = dict(data.factor_scores)
         provenance = {key: FactorProvenance("demo", "Demo fixture", "Demo data") for key in factors}
@@ -108,7 +110,8 @@ class AnalysisService:
         explanations = explain_analysis(score, provenance, coverage, demographics=demographics, competition=competition, occupancy=occupancy)
         trace = build_score_trace(score, provenance, coverage)
         site = self.site_service.analyze(geographic_location) if self.site_service else None
-        return AnalysisReport(data, score, competition, demographics, provenance, coverage, explanations, trace, site, occupancy)
+        regulatory = self.regulatory_service.analyze(geographic_location, concept, regulatory_project) if self.regulatory_service else None
+        return AnalysisReport(data, score, competition, demographics, provenance, coverage, explanations, trace, site, occupancy, regulatory)
 
 
 def _demographic_insights(data, census, competition):

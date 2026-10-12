@@ -1,0 +1,9 @@
+<details class="occupancy-inputs regulatory-inputs" {% if errors and errors.keys()|select('in', regulatory_project_fields)|list %}open{% endif %}>
+    <summary>{{ icon('list-checks') }}Restaurant project details<span class="small-label">Optional &middot; User supplied</span></summary>
+    <div class="regulatory-form-grid">
+        <div class="form-field"><label for="regulatory_type">Project type</label><select id="regulatory_type" name="regulatory_type" data-regulatory-input {% if errors.get('regulatory_type') %}aria-invalid="true" aria-describedby="regulatory_type-error"{% endif %}>{% for key, label in regulatory_project_types.items() %}<option value="{{ key }}" {% if values.get('regulatory_type', 'unknown') == key %}selected{% endif %}>{{ label }}</option>{% endfor %}</select>{% if errors.get('regulatory_type') %}<p class="field-error" id="regulatory_type-error" role="alert">{{ errors.regulatory_type }}</p>{% endif %}</div>
+        {% for key, label in regulatory_project_questions.items() %}{% set name = 'regulatory_' ~ key %}
+        <div class="form-field"><label for="{{ name }}">{{ label }}</label><select id="{{ name }}" name="{{ name }}" data-regulatory-input {% if errors.get(name) %}aria-invalid="true" aria-describedby="{{ name }}-error"{% endif %}>{% for answer, text in regulatory_answers.items() %}<option value="{{ answer }}" {% if values.get(name, 'unknown') == answer %}selected{% endif %}>{{ text }}</option>{% endfor %}</select>{% if errors.get(name) %}<p class="field-error" id="{{ name }}-error" role="alert">{{ errors[name] }}</p>{% endif %}</div>
+        {% endfor %}
+    </div>
+</details>

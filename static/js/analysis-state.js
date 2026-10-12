@@ -11,6 +11,9 @@ export function invalidateAnalysis(message = "Analysis pending") {
   for (const context of document.querySelectorAll("[data-occupancy-status]")) {
     context.dataset.occupancyStatus = "stale";
   }
+  for (const context of document.querySelectorAll("[data-regulatory-status]")) {
+    context.dataset.regulatoryStatus = "stale";
+  }
   const pending = document.querySelector("[data-analysis-pending]");
   if (pending) {
     pending.hidden = false;
@@ -33,6 +36,9 @@ export function bindAnalysisState() {
   document.querySelector("#concept").addEventListener("input", () => invalidateAnalysis());
   document.querySelector("#radius-miles").addEventListener("change", () => invalidateAnalysis());
   for (const input of document.querySelectorAll("[data-occupancy-input]")) {
+    for (const event of ["input", "change"]) input.addEventListener(event, () => invalidateAnalysis());
+  }
+  for (const input of document.querySelectorAll("[data-regulatory-input]")) {
     for (const event of ["input", "change"]) input.addEventListener(event, () => invalidateAnalysis());
   }
   window.addEventListener("pageshow", event => {

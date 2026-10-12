@@ -19,10 +19,10 @@ def amount(value, *, money=False, suffix="", missing="Unavailable"):
     return (currency(number) if money else f"{number:,.2f}".rstrip("0").rstrip(".")) + suffix
 
 
-def snapshot_sections(snapshot):
+def snapshot_sections(snapshot, *, include_regulatory=True):
     demo, competition, site, occupancy = (snapshot[key] for key in ("demographics", "competition", "site", "occupancy"))
     rate = lambda value, basis: amount(value, money=True, missing="Not supplied") + (" " + RENT_BASES[basis].removeprefix("USD ") if value is not None and basis in RENT_BASES else "")
-    return [
+    sections = [
         {"label": "Demographics", "rows": [
             ("Tract population", amount(demo["population"])), ("Median household income", amount(demo["income"], money=True)),
             ("Population / income MOE", amount(demo["population_moe"]) + " / " + amount(demo["income_moe"], money=True)),
@@ -58,6 +58,24 @@ def snapshot_sections(snapshot):
             ("Occupancy model", occupancy["model_version"] or "Demo rent - no occupancy model"),
         ]},
     ]
+    if not include_regulatory:
+        return sections
+    regulatory = snapshot.get("regulatory")
+    gis_sources = "; ".join(source["url"] for source in regulatory["sources"] if source["type"] == "GIS point query") if regulatory else ""
+    sections.insert(-1, {"label": "Zoning & regulatory feasibility", "rows": [
+        ("Regulatory review status", regulatory["status_label"] if regulatory else "Not captured in this snapshot"),
+        ("Jurisdiction", regulatory["jurisdiction"] or "Not established" if regulatory else "Unknown"),
+        ("Official GIS district", regulatory["district"] or "Unknown" if regulatory else "Unknown"),
+        ("Zoning framework", regulatory["framework"] if regulatory else "Unknown"),
+        ("Restaurant-use permission", regulatory["use_status"] if regulatory else "Not verified"),
+        ("Regulatory evidence", regulatory["evidence_status"].replace("_", " ") if regulatory else "Not captured"),
+        ("Unresolved conditions", " ".join(regulatory["unresolved"] + regulatory["missing"]) if regulatory else "Not evaluated"),
+        ("Regulatory retrieval time", regulatory["retrieved_at"] or "Not retrieved" if regulatory else "Not captured"),
+        ("Legal effective date", regulatory["effective_date"] or "Unknown" if regulatory else "Unknown"),
+        ("Stored regulatory workflow", regulatory["version"] if regulatory else "Not captured"),
+        ("Official GIS sources", gis_sources or "Not captured"),
+    ]})
+    return sections
 
 
 @dataclass(frozen=True)

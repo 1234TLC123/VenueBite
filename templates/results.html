@@ -25,7 +25,7 @@
     </div>
 </div>
 <nav class="report-nav" aria-label="Report sections">
-    <a href="#score-heading">Overview</a><a href="#factor-heading">Factors</a><a href="#insights-heading">Market context</a><a href="#site-heading" {% if not report.site %}hidden{% endif %}>Site</a>{% if report.occupancy %}<a href="#occupancy-heading">Occupancy</a>{% endif %}
+    <a href="#score-heading">Overview</a><a href="#factor-heading">Factors</a><a href="#insights-heading">Market context</a><a href="#site-heading" {% if not report.site %}hidden{% endif %}>Site</a>{% if report.occupancy %}<a href="#occupancy-heading">Occupancy</a>{% endif %}{% if report.regulatory %}<a href="#regulatory-heading">Regulatory</a>{% endif %}
 </nav>
 </div>
 <div class="analysis-grid">
@@ -67,4 +67,5 @@
     {% if report.site %}{% include '_site_intelligence.html' %}{% endif %}
     {% if report.occupancy %}{% include '_occupancy.html' %}{% endif %}
 </div>
+{% if report.regulatory %}{% with regulatory = report.regulatory %}{% include '_regulatory_feasibility.html' %}{% endwith %}{% endif %}
 {% endblock %}

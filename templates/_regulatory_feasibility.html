@@ -1,0 +1,26 @@
+<section class="regulatory-section" aria-labelledby="regulatory-heading" data-analysis-output data-regulatory-status="{{ regulatory.status if regulatory else 'not_captured' }}">
+    <div class="section-heading"><div><p class="eyebrow">REGULATORY INTELLIGENCE</p><h2 id="regulatory-heading">Zoning &amp; regulatory feasibility</h2></div><span class="data-badge">{{ regulatory.status_label if regulatory else 'Not captured' }}</span></div>
+    {% if not regulatory %}<p class="snapshot-notice">Regulatory evidence was not captured in this historical snapshot. No provider was called.</p>
+    {% else %}
+    <p class="snapshot-notice">{{ regulatory.message }}</p>
+    <div class="regulatory-summary">
+        <dl class="site-facts"><div><dt>Jurisdiction</dt><dd>{{ regulatory.jurisdiction or 'Not established' }}</dd></div><div><dt>Official GIS district</dt><dd>{{ regulatory.district or 'Unknown' }}{% if regulatory.district %}<span class="metric-source">Verified official fact</span>{% endif %}</dd></div><div><dt>Zoning framework</dt><dd>{{ regulatory.framework }}</dd></div><div><dt>Restaurant use</dt><dd>{{ regulatory.use_status }}<span class="metric-source">Needs official confirmation</span></dd></div></dl>
+    </div>
+    {% if regulatory.next_steps %}<h3>Priority next steps</h3><ol class="regulatory-next">{% for step in regulatory.next_steps %}<li>{{ step }}</li>{% endfor %}</ol>{% endif %}
+    <div class="regulatory-disclosures">
+        <details class="model-details"><summary>Known facts &amp; unresolved questions</summary>
+            {% for finding in regulatory.findings %}<p><span class="metric-source">{{ regulatory_evidence_labels[finding.evidence] }}</span> {{ finding.text }} <a class="source-link" href="{{ finding.source_url }}" target="_blank" rel="noopener noreferrer">Official evidence</a></p>{% endfor %}
+            {% if regulatory.description %}<p>GIS description: {{ regulatory.description }}</p>{% endif %}
+            <dl class="site-facts">{% for key, label in [('overlay', 'Overlay field'), ('waivers', 'Waiver field'), ('conditions', 'Condition field'), ('pud_number', 'PUD number')] %}<div><dt>{{ label }}</dt><dd>{{ regulatory[key] or 'Unknown / not populated' }}</dd></div>{% endfor %}</dl>
+            <h3>Needs verification</h3><ul>{% for note in regulatory.unresolved %}<li>{{ note }}</li>{% endfor %}{% for note in regulatory.missing %}<li>{{ note }}</li>{% endfor %}</ul>
+        </details>
+        {% if regulatory.checklist %}<details class="model-details"><summary>Permit &amp; review checklist</summary><ul class="regulatory-checklist">{% for item in regulatory.checklist %}<li><div><strong>{{ item.topic }}</strong><span>{{ item.status }}</span><span class="metric-source">{{ regulatory_evidence_labels[item.evidence] }}</span></div><a class="source-link" href="{{ item.source_url }}" target="_blank" rel="noopener noreferrer" aria-label="Official Denver guidance for {{ item.topic }}">Official guidance</a></li>{% endfor %}</ul></details>{% endif %}
+        <details class="model-details"><summary>Project facts &amp; source history</summary><p>Business concept: {{ regulatory.project_concept }}. Statutory use classification remains unverified.</p><dl class="site-facts"><div><dt>User project type</dt><dd>{{ regulatory_project_types[regulatory.project.type] }}</dd></div>{% for key, label in regulatory_project_questions.items() %}<div><dt>{{ label }} &middot; user supplied</dt><dd>{{ regulatory_answers[regulatory.project[key]] }}</dd></div>{% endfor %}</dl>
+            <p>Lookup retrieved: {% if regulatory.retrieved_at %}<time datetime="{{ regulatory.retrieved_at }}">{{ regulatory.retrieved_at|snapshot_date }}</time>{% else %}Not retrieved{% endif %}. Legal effective date: {{ regulatory.effective_date or 'Unknown' }}.</p><p>{{ regulatory.source_version }}. GIS code-family flag: {{ regulatory.code_family or 'Unknown' }}; not a current amendment date.</p>
+            {% for source in regulatory.sources %}<p><a class="source-link" href="{{ source.url }}" target="_blank" rel="noopener noreferrer">{{ source.title }}</a><span class="cell-detail">{{ source.agency }} &middot; {{ source.type }}. {% if source.retrieved_at %}Retrieved {{ source.retrieved_at|snapshot_date }}.{% else %}Guidance link checked {{ source.verified_at }}; not re-fetched with this analysis.{% endif %} Effective date {{ source.effective_date or 'unknown' }}.</span></p>{% endfor %}
+            <p>{{ regulatory.retention_note }}</p><p>Review workflow: {{ regulatory.version }}</p>
+        </details>
+    </div>
+    <p class="section-caption">{{ regulatory.limitations }} Regulatory evidence does not change Opportunity Score or Data Coverage.</p>
+    {% endif %}
+</section>
