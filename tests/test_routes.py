@@ -160,12 +160,14 @@ def test_oversized_request_has_safe_error_page(client):
     assert b"request is too large" in response.data
 
 
-def test_security_headers_and_no_session_cookie(client):
+def test_security_headers_and_csrf_session_cookie(client):
+    assert "Set-Cookie" not in client.get("/").headers
     response = client.post("/", data=VALID_FORM)
     assert response.headers["X-Content-Type-Options"] == "nosniff"
     assert "default-src 'self'" in response.headers["Content-Security-Policy"]
     assert "form-action 'self'" in response.headers["Content-Security-Policy"]
-    assert "Set-Cookie" not in response.headers
+    assert "HttpOnly" in response.headers["Set-Cookie"]
+    assert "SameSite=Lax" in response.headers["Set-Cookie"]
 
 
 @pytest.mark.parametrize("path, mime", [

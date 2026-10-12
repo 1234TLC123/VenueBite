@@ -9,6 +9,7 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     {% if map_enabled and not saved_workspace %}<link rel="stylesheet" href="https://api.mapbox.com/mapbox-gl-js/v3.30.0/mapbox-gl.css">{% endif %}
     <script src="{{ url_for('static', filename='js/saved-sites.js' if saved_workspace else 'js/main.js') }}" type="module"></script>
+    {% if ai_context %}<link rel="stylesheet" href="{{ url_for('static', filename='css/ai-analyst.css') }}"><script src="{{ url_for('static', filename='js/ai-analyst.js') }}" type="module"></script>{% endif %}
 </head>
 <body>
     {% from '_icons.html' import icon with context %}
@@ -45,6 +46,7 @@
         {% endif %}
         {% block content %}{% endblock %}
     </main>
+    {% if ai_context %}{% include '_ai_analyst.html' %}{% endif %}
     <footer class="app-footer">
         <span>VenueBite <span class="footer-divider">/</span> Location intelligence</span>
         <span>Census and competition where available. Commercial terms require verification. Not a guarantee of success.</span>

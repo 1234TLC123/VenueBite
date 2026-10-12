@@ -9,6 +9,8 @@ from venuebite.db import PersistenceError
 from venuebite.services.comparison_service import EVIDENCE_LABELS, snapshot_sections
 from venuebite.services.saved_site_service import FORM_FIELDS, SaveError
 from venuebite.snapshots import SnapshotError
+from venuebite.ai_routes import ai_session
+from venuebite.services.ai_context import analyst_view
 
 
 bp = Blueprint("saved", __name__)
@@ -72,7 +74,9 @@ def detail(site_id):
         return error_page(str(error), 422)
     except PersistenceError as error:
         return error_page(str(error), 503)
-    return render_template("saved_detail.html", site=site, sections=snapshot_sections(site.snapshot, include_regulatory=False), saved_workspace=True)
+    ai_context = analyst_view(current_app.extensions["ai_context_builder"].saved_site(site, ai_session()), "saved", "Saved snapshot",
+                              current_app.extensions["ai_analyst_service"].provider.enabled)
+    return render_template("saved_detail.html", site=site, sections=snapshot_sections(site.snapshot, include_regulatory=False), saved_workspace=True, ai_context=ai_context)
 
 
 @bp.get("/saved/<site_id>/delete-confirmation")
@@ -120,8 +124,10 @@ def compare():
         if not selected and request.args.get("pick") in valid_selection:
             selected = [request.args["pick"]]
         selected = [value for value in selected if value in valid_selection][:4]
+        ai_context = analyst_view(current_app.extensions["ai_context_builder"].compare(comparison, ai_session()), "compare", "Selected saved snapshots",
+                                  current_app.extensions["ai_analyst_service"].provider.enabled) if comparison else None
         return render_template("compare.html", listing=listing, comparison=comparison, selected=selected,
-                               comparison_error=message, saved_workspace=True), status
+                               comparison_error=message, saved_workspace=True, ai_context=ai_context), status
     except PersistenceError as error:
         return error_page(str(error), 503)
 

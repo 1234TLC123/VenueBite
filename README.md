@@ -134,6 +134,14 @@ The 2,800-SF example at $32/SF/year plus $8.50/SF/year yields base $89,600/year 
 
 Source URLs are safe HTTP(S) provenance links only; VenueBite does not fetch, scrape or independently verify them. Terms, budgets and notes are request-scoped unless explicitly saved as a historical model snapshot. There is no browser storage, market-rent comparison, property availability claim, lease recommendation, revenue/profit forecast or new property API. See [Commercial Occupancy Model v1](docs/commercial-occupancy-v1.md) for the full design and [Sprint 07 report](docs/sprint07-engineering-report.md) for historical verification.
 
+## SiteWise (Sprint 11)
+
+Completed analyses, saved-site detail and 2-4 selected comparisons include **SiteWise**, VenueBite's AI location intelligence analyst, behind an **Ask SiteWise** button. The analyst explains existing model evidence with expandable server-validated citations. It never replaces scores, makes location-provider calls, grants restaurant-use permission, or treats Data Coverage as success probability. Saved conversations use historical snapshots, not refreshed data.
+
+The optional official OpenAI Responses integration uses the Python SDK installed by `requirements.txt`. Configure `OPENAI_API_KEY` privately in the server environment or ignored `.env`, never in source, browser code or chat. `OPENAI_MODEL=gpt-4.1-mini`, `OPENAI_TIMEOUT_SECONDS=25` and `OPENAI_MAX_OUTPUT_TOKENS=1400` are configurable defaults. Restart Flask after changes. Without a key, the rest of VenueBite works normally and the drawer explains that AI is unavailable.
+
+Only explicit Send shares the question, bounded recent conversation and minimized selected evidence with OpenAI. VenueBite does not persist chat. `store=False` is used, but OpenAI account abuse-monitoring retention can still apply; it is not a Zero Data Retention guarantee. No Search Box coordinates, IDs, POI rows/counts/distances or result labels are sent; direct Regrid attributes are withheld pending external-sharing permission. User financial terms remain partial evidence. See [SiteWise analyst design and privacy](docs/ai-location-analyst-v1.md) and [Sprint 11 engineering report](docs/sprint11-engineering-report.md).
+
 ## Run
 
 ```powershell

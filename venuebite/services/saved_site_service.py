@@ -57,8 +57,8 @@ def _explanation_items(items):
     return [{"key": item.key, "label": item.label, "score": item.score, "status": item.status, "explanation": item.explanation} for item in items]
 
 
-def build_snapshot(report, location, values, *, timestamp=None):
-    if location is None or location.display_name != report.data.location:
+def build_snapshot(report, location, values, *, timestamp=None, allow_unresolved=False):
+    if not allow_unresolved and (location is None or location.display_name != report.data.location):
         raise SaveError("Save requires a completed analysis with a resolved candidate location.")
     if not report.provenance or not report.coverage or not report.explanations:
         raise SaveError("Complete an analysis before saving a site.")
@@ -158,7 +158,7 @@ class SavedSiteService:
         self.sensitive_values = tuple(value for value in sensitive_values if isinstance(value, str) and value)
 
     def _check_sensitive(self, text):
-        if any(value in text for value in self.sensitive_values) or re.search(r"\b(?:pk|sk)\.[A-Za-z0-9._-]{12,}", text):
+        if any(value in text for value in self.sensitive_values) or re.search(r"\b(?:(?:pk|sk)\.[A-Za-z0-9._-]{12,}|sk-[A-Za-z0-9_-]{12,})", text):
             raise SaveError("Remove credential-like content before saving this analysis.")
 
     def prepare(self, report, location, values):

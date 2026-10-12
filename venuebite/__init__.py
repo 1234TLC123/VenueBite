@@ -26,10 +26,14 @@ from venuebite.snapshots import utc_timestamp
 from venuebite.providers.denver_zoning_provider import DenverZoningProvider
 from venuebite.services.regulatory_service import RegulatoryService
 from venuebite.regulatory import PROJECT_TYPES, PROJECT_QUESTIONS, PROJECT_FIELDS, ANSWERS, EVIDENCE_LABELS as REGULATORY_EVIDENCE_LABELS
+from venuebite.ai import DEFAULT_MODEL
+from venuebite.providers.openai_provider import OpenAIProvider
+from venuebite.services.ai_context import AIContextBuilder
+from venuebite.services.ai_analyst_service import AIAnalystService
 
 
 def create_app(config=None, *, data_provider=None, location_provider=None, poi_provider=None,
-               census_geo_provider=None, demographic_provider=None, site_provider=None, zoning_provider=None):
+               census_geo_provider=None, demographic_provider=None, site_provider=None, zoning_provider=None, ai_provider=None):
     root = Path(__file__).resolve().parent.parent
     if not (config and config.get("TESTING")):
         load_dotenv(root / ".env", override=False)
@@ -57,9 +61,15 @@ def create_app(config=None, *, data_provider=None, location_provider=None, poi_p
         SESSION_COOKIE_SAMESITE="Lax",
         REGULATORY_ENABLED=os.environ.get("REGULATORY_ENABLED", "true").lower() == "true",
         REGULATORY_HTTP_TIMEOUT_SECONDS=os.environ.get("REGULATORY_HTTP_TIMEOUT_SECONDS", 6),
+        OPENAI_API_KEY=os.environ.get("OPENAI_API_KEY", ""),
+        OPENAI_MODEL=os.environ.get("OPENAI_MODEL", DEFAULT_MODEL),
+        OPENAI_TIMEOUT_SECONDS=os.environ.get("OPENAI_TIMEOUT_SECONDS", 25),
+        OPENAI_MAX_OUTPUT_TOKENS=os.environ.get("OPENAI_MAX_OUTPUT_TOKENS", 1400),
     )
     if config:
         app.config.update(config)
+    if app.testing and "OPENAI_API_KEY" not in (config or {}):
+        app.config["OPENAI_API_KEY"] = ""
     if app.testing and "DATABASE" not in (config or {}):
         directory = TemporaryDirectory(prefix="venuebite-test-")
         app.extensions["test_database_directory"] = directory
@@ -72,10 +82,18 @@ def create_app(config=None, *, data_provider=None, location_provider=None, poi_p
     app.extensions["saved_site_database"] = database
     saved_sites = SavedSiteService(
         SavedSiteRepository(database), app.config["SECRET_KEY"],
-        sensitive_values=tuple(app.config.get(key, "") for key in ("SECRET_KEY", "MAPBOX_ACCESS_TOKEN", "CENSUS_API_KEY", "REGRID_API_TOKEN")),
+        sensitive_values=tuple(app.config.get(key, "") for key in ("SECRET_KEY", "MAPBOX_ACCESS_TOKEN", "CENSUS_API_KEY", "REGRID_API_TOKEN", "OPENAI_API_KEY")),
     )
     app.extensions["saved_site_service"] = saved_sites
     app.extensions["comparison_service"] = ComparisonService(saved_sites)
+    sensitive_values = saved_sites.sensitive_values
+    ai_contexts = AIContextBuilder(saved_sites, app.extensions["comparison_service"], app.config["SECRET_KEY"], sensitive_values=sensitive_values)
+    ai_backend = ai_provider if ai_provider is not None else OpenAIProvider(
+        app.config["OPENAI_API_KEY"], model=app.config["OPENAI_MODEL"], timeout=app.config["OPENAI_TIMEOUT_SECONDS"],
+        max_output_tokens=app.config["OPENAI_MAX_OUTPUT_TOKENS"],
+    )
+    app.extensions["ai_context_builder"] = ai_contexts
+    app.extensions["ai_analyst_service"] = AIAnalystService(ai_backend, ai_contexts, sensitive_values=sensitive_values)
 
     @app.template_filter("snapshot_date")
     def snapshot_date(value):
@@ -160,6 +178,8 @@ def create_app(config=None, *, data_provider=None, location_provider=None, poi_p
     app.register_blueprint(bp)
     from venuebite.saved_routes import bp as saved_bp
     app.register_blueprint(saved_bp)
+    from venuebite.ai_routes import bp as ai_bp
+    app.register_blueprint(ai_bp)
 
     @app.errorhandler(413)
     def request_too_large(error):

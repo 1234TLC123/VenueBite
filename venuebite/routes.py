@@ -1,4 +1,5 @@
-from flask import Blueprint, current_app, jsonify, render_template, request
+from flask import Blueprint, current_app, jsonify, render_template, request, session
+from hashlib import sha256
 
 from venuebite.providers.location_provider import LocationError, validate_identifier, validate_query, validate_session
 from venuebite.providers.mapbox_provider import public_token
@@ -10,6 +11,9 @@ from venuebite.db import PersistenceError
 from venuebite.services.saved_site_service import SaveError
 from venuebite.snapshots import SnapshotError
 from venuebite.regulatory import normalize_project
+from venuebite.ai import AIError
+from venuebite.ai_routes import ai_session
+from venuebite.services.ai_context import analyst_view
 
 bp = Blueprint("main", __name__)
 FIELD_LIMITS = {"location": 200, "concept": 120}
@@ -125,11 +129,19 @@ def home():
             snapshot_token = current_app.extensions["saved_site_service"].prepare(report, geographic_location, values)
         except (SaveError, SnapshotError) as error:
             save_unavailable = str(error)
+    ai_context = None
+    try:
+        ai_context = analyst_view(current_app.extensions["ai_context_builder"].current(report, geographic_location, values, ai_session()),
+                                  "current", "Current analysis", current_app.extensions["ai_analyst_service"].provider.enabled)
+        session["ai_current_hash"] = sha256(ai_context["token"].encode()).hexdigest()
+    except (AIError, SaveError, SnapshotError):
+        pass
     return render_template(
         "results.html", values=values, errors={}, report=report, geographic_location=geographic_location,
         competition_payload=competition_payload, parcel_payload=parcel_payload,
         snapshot_token=snapshot_token, save_unavailable=save_unavailable,
         save_name=f"{values['concept']} candidate"[:140],
+        ai_context=ai_context,
     )
 
 

@@ -1,0 +1,20 @@
+<button class="analyst-launch command-button" type="button" data-ai-open aria-haspopup="dialog" aria-controls="ai-dialog">{{ icon('compass') }}Ask SiteWise</button>
+<dialog class="analyst-drawer" id="ai-dialog" aria-labelledby="ai-heading" data-ai-dialog data-ai-kind="{{ ai_context.kind }}" data-ai-token="{{ ai_context.token }}" data-ai-csrf="{{ session.get('ai_csrf', '') }}" data-ai-enabled="{{ 'true' if ai_context.enabled else 'false' }}">
+    <div class="analyst-header">
+        <div class="analyst-identity"><span class="analyst-mark">{{ icon('compass') }}</span><div><h2 id="ai-heading">SiteWise</h2><p class="analyst-subtitle">VenueBite's AI location intelligence analyst</p></div></div>
+        <div class="action-row"><button class="icon-button" type="button" data-ai-reset title="Reset conversation" aria-label="Reset conversation">{{ icon('circle-dashed') }}</button><button class="icon-button" type="button" data-ai-close title="Close analyst" aria-label="Close analyst">{{ icon('x') }}</button></div>
+    </div>
+    <div class="analyst-context"><span class="data-badge">{{ ai_context.label }}</span><span class="small-label">{{ 'Historical evidence' if ai_context.kind != 'current' else 'Completed model analysis' }}</span></div>
+    <div class="analyst-body">
+        <div class="analyst-starters" data-ai-starters><p class="eyebrow">ASK SITEWISE</p>{% for question in ai_context.starters %}<button type="button" class="analyst-question" data-ai-starter>{{ question }}</button>{% endfor %}</div>
+        <div class="analyst-messages" role="log" aria-label="SiteWise conversation" aria-live="polite" aria-relevant="additions" data-ai-messages></div>
+    </div>
+    <div class="analyst-status" data-ai-status role="status" aria-live="polite"></div>
+    <p class="analyst-error" data-ai-error role="alert" hidden></p>
+    <form class="analyst-composer" data-ai-form>
+        <label for="ai-question">Your question</label>
+        <textarea id="ai-question" data-ai-input maxlength="1200" rows="3" placeholder="Ask SiteWise about scores, evidence or next steps" required></textarea>
+        <div class="analyst-composer-row"><span data-ai-count class="small-label">0 / 1200</span><button class="command-button primary-command" type="submit" data-ai-send>{{ icon('scan-search') }}Ask SiteWise</button></div>
+        <p class="analyst-privacy">Sending shares your question and selected model evidence with OpenAI. No location providers are refreshed. Chat is not saved by VenueBite.</p>
+    </form>
+</dialog>

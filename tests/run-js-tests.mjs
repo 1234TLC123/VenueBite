@@ -3,6 +3,7 @@ import { runOccupancyStateTests } from "./occupancy-state.test.mjs";
 import { runFormUITests } from "./form-ui.test.mjs";
 import { runSavedSiteTests } from "./saved-sites.test.mjs";
 import { runRegulatoryStateTests } from "./regulatory-state.test.mjs";
+import { runAIAnalystTests } from "./ai-analyst.test.mjs";
 
 export async function runAllJavaScriptTests() {
   const suites = {
@@ -11,6 +12,7 @@ export async function runAllJavaScriptTests() {
     form: runFormUITests(),
     saved: runSavedSiteTests(),
     regulatory: await runRegulatoryStateTests(),
+    ai: await runAIAnalystTests(),
   };
   return { passed: Object.values(suites).reduce((total, cases) => total + cases.length, 0), suites };
 }
